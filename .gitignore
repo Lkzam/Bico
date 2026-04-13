@@ -23,6 +23,17 @@
 # misc
 .DS_Store
 *.pem
+*.key
+*.p12
+*.pfx
+Thumbs.db
+
+# local config
+*.local
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
 
 # debug
 npm-debug.log*
