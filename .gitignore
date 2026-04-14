@@ -28,6 +28,10 @@
 *.pfx
 Thumbs.db
 
+# certificados Efí Bank (nunca subir para o git)
+/certs/*.p12
+/certs/*.pem
+
 # local config
 *.local
 .env.local
