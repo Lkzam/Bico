@@ -18,15 +18,19 @@ export async function GET(
   if (!profile) return NextResponse.json({ error: 'Perfil não encontrado.' }, { status: 404 })
 
   const { data: job } = await admin
-    .from('jobs').select('company_id, freelancer_id, delivery_url').eq('id', jobId).single()
+    .from('jobs').select('company_id, freelancer_id, delivery_url, status').eq('id', jobId).single()
 
   if (!job) return NextResponse.json({ error: 'Trabalho não encontrado.' }, { status: 404 })
 
-  // Only company or freelancer of this job can view the file
   const isCompany = profile.role === 'company' && job.company_id === profile.id
   const isFreelancer = profile.role === 'freelancer' && job.freelancer_id === profile.id
   if (!isCompany && !isFreelancer)
     return NextResponse.json({ error: 'Sem permissão.' }, { status: 403 })
+
+  // Empresa só pode baixar após o pagamento ser confirmado (escrow)
+  const PAID_STATUSES = ['payment_received', 'completed', 'disputed']
+  if (isCompany && !PAID_STATUSES.includes(job.status))
+    return NextResponse.json({ error: 'Arquivo disponível apenas após o pagamento.' }, { status: 403 })
 
   if (!job.delivery_url)
     return NextResponse.json({ error: 'Nenhum arquivo entregue.' }, { status: 404 })

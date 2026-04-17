@@ -4,16 +4,19 @@ import { useEffect, useState, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { formatCurrency, formatDate } from '@/lib/utils'
-import { Wallet, Star, CheckCircle, Clock, ArrowRight, Zap, Tag } from 'lucide-react'
+import { Wallet, Star, CheckCircle, Clock, ArrowRight, Zap, Tag, X } from 'lucide-react'
+import { calcFreelancerReceives, PLATFORM_FEE_FREELANCER } from '@/lib/fees'
 import Link from 'next/link'
 import { toast, Toaster } from 'sonner'
+import { ReviewModal } from '@/components/ReviewModal'
 
 const statusMap: Record<string, { label: string; color: string }> = {
-  open:        { label: 'Aberto',       color: '#3b82f6' },
-  in_progress: { label: 'Em andamento', color: '#d94e18' },
-  delivered:   { label: 'Entregue',     color: '#C18F6B' },
-  completed:   { label: 'Concluído',    color: '#22c55e' },
-  cancelled:   { label: 'Cancelado',    color: '#ef4444' },
+  open:             { label: 'Aberto',           color: '#3b82f6' },
+  in_progress:      { label: 'Em andamento',     color: '#d94e18' },
+  delivered:        { label: 'Entregue',         color: '#C18F6B' },
+  payment_received: { label: 'Pago — em análise', color: '#a78bfa' },
+  cancelled:        { label: 'Cancelado',        color: '#ef4444' },
+  disputed:         { label: 'Contestado',       color: '#f59e0b' },
 }
 
 export default function FreelancerDashboard() {
@@ -23,8 +26,11 @@ export default function FreelancerDashboard() {
   const [profile, setProfile] = useState<any>(null)
   const [myJobs, setMyJobs] = useState<any[]>([])
   const [availableJobs, setAvailableJobs] = useState<any[]>([])
+  const [archivedCount, setArchivedCount] = useState(0)
+  const [pendingReview, setPendingReview] = useState<{ archiveId: string; jobTitle: string; companyName: string } | null>(null)
   const [userTagIds, setUserTagIds] = useState<string[]>([])
   const [accepting, setAccepting] = useState<string | null>(null)
+  const [confirmJob, setConfirmJob] = useState<any | null>(null)
   const userTagIdsRef = useRef<string[]>([])
 
   useEffect(() => {
@@ -37,7 +43,7 @@ export default function FreelancerDashboard() {
       if (!prof || prof.role !== 'freelancer') { router.push('/dashboard/company'); return }
       setProfile(prof)
 
-      // My accepted jobs
+      // My accepted jobs (ativos — concluídos são arquivados e deletados)
       const { data: jobs } = await supabase
         .from('jobs')
         .select('*, profiles!jobs_company_id_fkey(name)')
@@ -45,6 +51,30 @@ export default function FreelancerDashboard() {
         .order('created_at', { ascending: false })
         .limit(8)
       setMyJobs(jobs ?? [])
+
+      // Contador de jobs já concluídos e arquivados
+      const { count: archived } = await supabase
+        .from('job_archives')
+        .select('id', { count: 'exact', head: true })
+        .eq('freelancer_id', prof.id)
+      setArchivedCount(archived ?? 0)
+
+      // Verifica se há avaliação pendente (job concluído ainda não avaliado)
+      const { data: unreviewed } = await supabase
+        .from('job_archives')
+        .select('id, title, company_id, profiles!job_archives_company_id_fkey(name)')
+        .eq('freelancer_id', prof.id)
+        .eq('freelancer_reviewed', false)
+        .limit(1)
+        .maybeSingle()
+
+      if (unreviewed) {
+        setPendingReview({
+          archiveId:   unreviewed.id,
+          jobTitle:    unreviewed.title,
+          companyName: (unreviewed as any).profiles?.name ?? 'Empresa',
+        })
+      }
 
       // My tags
       const { data: ut } = await supabase
@@ -111,11 +141,13 @@ export default function FreelancerDashboard() {
     setAvailableJobs(jobs ?? [])
   }
 
-  async function acceptJob(jobId: string) {
-    if (!profile || accepting) return
-    setAccepting(jobId)
 
-    const res = await fetch(`/api/jobs/${jobId}/accept`, { method: 'POST' })
+  async function confirmAccept() {
+    if (!confirmJob) return
+    setAccepting(confirmJob.id)
+    setConfirmJob(null)
+
+    const res = await fetch(`/api/jobs/${confirmJob.id}/accept`, { method: 'POST' })
     const json = await res.json()
 
     if (!res.ok) {
@@ -128,35 +160,40 @@ export default function FreelancerDashboard() {
     toast.success('Trabalho aceito! O chat foi aberto.')
     setAccepting(null)
 
-    // Refresh
     const { data: jobs } = await supabase
-      .from('jobs')
-      .select('*, profiles!jobs_company_id_fkey(name)')
-      .eq('freelancer_id', profile.id)
-      .order('created_at', { ascending: false })
-      .limit(8)
+      .from('jobs').select('*, profiles!jobs_company_id_fkey(name)')
+      .eq('freelancer_id', profile.id).order('created_at', { ascending: false }).limit(8)
     setMyJobs(jobs ?? [])
     await loadAvailableJobs(userTagIds, profile.id)
-
     if (json.chatId) router.push(`/dashboard/messages/${json.chatId}`)
   }
 
   if (!profile) return null
 
-  const completedJobs = myJobs.filter(j => j.status === 'completed').length
-  const activeJobs    = myJobs.filter(j => j.status === 'in_progress').length
-  const balance       = profile.balance ?? 0
+  const activeJobs = myJobs.filter(j => j.status === 'in_progress').length
+  const balance    = profile.balance ?? 0
 
   const stats = [
     { icon: Wallet,       label: 'Saldo disponível', value: formatCurrency(balance), accent: true },
     { icon: Clock,        label: 'Em andamento',      value: String(activeJobs)                   },
-    { icon: CheckCircle,  label: 'Concluídos',        value: String(completedJobs)                },
+    { icon: CheckCircle,  label: 'Concluídos',        value: String(archivedCount)                },
     { icon: Star,         label: 'Avaliação',         value: profile.rating_count > 0 ? Number(profile.rating).toFixed(1) : '—' },
   ]
 
   return (
     <div style={{ color: '#fff' }}>
       <Toaster position="top-right" richColors />
+
+      {/* Modal de avaliação obrigatória */}
+      {pendingReview && (
+        <ReviewModal
+          jobArchiveId={pendingReview.archiveId}
+          jobTitle={pendingReview.jobTitle}
+          reviewedName={pendingReview.companyName}
+          reviewerRole="freelancer"
+          onDone={() => setPendingReview(null)}
+        />
+      )}
 
       {/* Header */}
       <div style={{ marginBottom: 40 }}>
@@ -273,21 +310,20 @@ export default function FreelancerDashboard() {
                     {formatCurrency(job.value)}
                   </span>
                   <button
-                    onClick={() => acceptJob(job.id)}
-                    disabled={accepting === job.id}
+                    onClick={() => setConfirmJob(job)}
+                    disabled={!!accepting}
                     style={{
                       padding: '10px 20px',
-                      background: accepting === job.id ? 'rgba(217,78,24,0.4)' : '#d94e18',
+                      background: accepting ? 'rgba(217,78,24,0.4)' : '#d94e18',
                       color: '#fff', border: 'none',
-                      cursor: accepting === job.id ? 'not-allowed' : 'pointer',
+                      cursor: accepting ? 'not-allowed' : 'pointer',
                       fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase',
                       fontFamily: 'inherit', transition: 'background 0.15s',
                       display: 'flex', alignItems: 'center', gap: 6,
                     }}
-                    onMouseOver={e => { if (accepting !== job.id) (e.currentTarget as HTMLButtonElement).style.background = '#c04010' }}
-                    onMouseOut={e => { if (accepting !== job.id) (e.currentTarget as HTMLButtonElement).style.background = '#d94e18' }}>
-                    <Zap size={12} />
-                    {accepting === job.id ? 'Aceitando...' : 'Aceitar'}
+                    onMouseOver={e => { if (!accepting) (e.currentTarget as HTMLButtonElement).style.background = '#c04010' }}
+                    onMouseOut={e => { if (!accepting) (e.currentTarget as HTMLButtonElement).style.background = '#d94e18' }}>
+                    <Zap size={12} /> Aceitar
                   </button>
                 </div>
               </div>
@@ -295,6 +331,83 @@ export default function FreelancerDashboard() {
           )}
         </div>
       </div>
+
+      {/* Modal de confirmação de aceite */}
+      {confirmJob && (() => {
+        const freelancerReceives = calcFreelancerReceives(confirmJob.value)
+        const fee = confirmJob.value - freelancerReceives
+        return (
+          <div style={{
+            position: 'fixed', inset: 0, zIndex: 1000,
+            background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(4px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24,
+          }} onClick={e => { if (e.target === e.currentTarget) setConfirmJob(null) }}>
+            <div style={{ width: '100%', maxWidth: 420, background: '#0f1219', border: '1px solid rgba(255,255,255,0.1)', padding: 32 }}>
+
+              {/* Header */}
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 24 }}>
+                <div>
+                  <p style={{ fontSize: '0.58rem', fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: '#d94e18', margin: '0 0 6px' }}>
+                    Confirmar aceite
+                  </p>
+                  <h3 style={{ fontSize: 18, fontWeight: 800, color: '#fff', margin: '0 0 4px', letterSpacing: '-0.02em' }}>
+                    {confirmJob.title}
+                  </h3>
+                  <p style={{ fontSize: 12, color: 'rgba(185,190,200,0.4)', margin: 0 }}>
+                    {confirmJob.profiles?.name}
+                    {confirmJob.deadline_hours && ` · ${confirmJob.deadline_hours}h de prazo`}
+                  </p>
+                </div>
+                <button onClick={() => setConfirmJob(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(185,190,200,0.4)', padding: 4 }}>
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Breakdown financeiro */}
+              <p style={{ fontSize: '0.58rem', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'rgba(185,190,200,0.4)', margin: '0 0 8px' }}>
+                Quanto você vai receber
+              </p>
+              <div style={{ border: '1px solid rgba(255,255,255,0.08)', marginBottom: 20 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '11px 16px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                  <span style={{ fontSize: 13, color: 'rgba(185,190,200,0.6)' }}>Valor do trabalho</span>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: '#fff' }}>{formatCurrency(confirmJob.value)}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '11px 16px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                  <span style={{ fontSize: 13, color: 'rgba(185,190,200,0.6)' }}>Taxa da plataforma ({Math.round(PLATFORM_FEE_FREELANCER * 100)}%)</span>
+                  <span style={{ fontSize: 13, color: '#ef4444' }}>− {formatCurrency(fee)}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '11px 16px', background: 'rgba(34,197,94,0.05)' }}>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: '#22c55e' }}>Você recebe</span>
+                  <span style={{ fontSize: 16, fontWeight: 800, color: '#22c55e', fontFamily: 'var(--font-heading)' }}>{formatCurrency(freelancerReceives)}</span>
+                </div>
+              </div>
+
+              <p style={{ fontSize: 12, color: 'rgba(185,190,200,0.4)', margin: '0 0 20px', lineHeight: 1.5 }}>
+                Ao aceitar, você se compromete a entregar o trabalho dentro do prazo combinado. O valor será creditado após o pagamento da empresa.
+              </p>
+
+              <div style={{ display: 'flex', gap: 10 }}>
+                <button onClick={() => setConfirmJob(null)} style={{
+                  flex: 1, padding: '12px', background: 'transparent',
+                  border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(185,190,200,0.6)',
+                  cursor: 'pointer', fontSize: '0.65rem', fontWeight: 700,
+                  letterSpacing: '0.1em', textTransform: 'uppercase', fontFamily: 'inherit',
+                }}>
+                  Recusar
+                </button>
+                <button onClick={confirmAccept} style={{
+                  flex: 2, padding: '12px', background: '#d94e18', border: 'none', color: '#fff',
+                  cursor: 'pointer', fontSize: '0.65rem', fontWeight: 700,
+                  letterSpacing: '0.1em', textTransform: 'uppercase', fontFamily: 'inherit',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                }}>
+                  <Zap size={13} /> Aceitar trabalho
+                </button>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
 
       {/* My Jobs */}
       <div>
