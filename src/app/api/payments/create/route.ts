@@ -55,7 +55,7 @@ export async function POST(req: Request) {
     })
 
     // Salva a cobrança no banco
-    await admin.from('payments').insert({
+    const { error: insertError } = await admin.from('payments').insert({
       job_id: job.id,
       txid: charge.txid,
       status: 'pending',
@@ -63,7 +63,18 @@ export async function POST(req: Request) {
       total_value: charge.valor,
       qrcode: charge.qrcode,
       qrcode_image: charge.imagemQrcode,
+      amount: charge.valor,
+      fee: 0,
+      freelancer_amount: 0,
     })
+
+    if (insertError) {
+      console.error('[payments/create] Erro ao salvar payment:', insertError)
+      return NextResponse.json(
+        { error: 'Erro ao salvar cobrança no banco.' },
+        { status: 500 }
+      )
+    }
 
     return NextResponse.json(charge)
   } catch (err: any) {

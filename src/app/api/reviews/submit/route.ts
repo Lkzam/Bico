@@ -50,12 +50,11 @@ export async function POST(req: Request) {
   const { error: insertError } = await admin
     .from('reviews')
     .insert({
-      job_archive_id: jobArchiveId,
-      reviewer_id:    profile.id,
-      reviewed_id:    reviewedId,
-      reviewer_role:  profile.role,
-      rating,
-      comment: comment?.trim() || null,
+      job_id:      jobArchiveId,
+      reviewer_id: profile.id,
+      reviewee_id: reviewedId,
+      stars:       rating,
+      comment:     comment?.trim() || null,
     })
 
   if (insertError) {
