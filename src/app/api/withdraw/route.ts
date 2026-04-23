@@ -74,13 +74,8 @@ export async function POST(req: Request) {
     // txid único para o saque (máx 35 chars, apenas alfanumérico)
     const txid = withdrawal.id.replace(/-/g, '').substring(0, 35)
 
-    // Normaliza chave PIX de telefone: adiciona +55 se necessário
-    let chave = pixKey.trim()
-    const isPhone = /^(\+?55)?(\d{10,11})$/.test(chave.replace(/\D/g, ''))
-    if (isPhone) {
-      const digits = chave.replace(/\D/g, '')
-      chave = digits.startsWith('55') ? `+${digits}` : `+55${digits}`
-    }
+    // Usa a chave PIX exatamente como o usuário informou
+    const chave = pixKey.trim()
 
     // Efí Bank v3: valor como string, pagador = sua chave PIX, favorecido = chave do freelancer
     const pixBody = {
