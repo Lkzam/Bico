@@ -50,25 +50,20 @@ export default function WithdrawPage() {
 
     setLoading(true)
 
-    // Salva chave PIX no perfil se mudou
-    if (pixKey !== profile.pix_key) {
-      await supabase.from('profiles').update({ pix_key: pixKey }).eq('id', profile.id)
-    }
-
-    const { error } = await supabase.from('withdrawals').insert({
-      freelancer_id: profile.id,
-      amount: value,
-      pix_key: pixKey,
-      status: 'pending',
+    const res = await fetch('/api/withdraw', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ amount: value, pixKey }),
     })
+    const json = await res.json()
 
-    if (error) {
-      toast.error('Erro ao solicitar saque. Tente novamente.')
+    if (!res.ok) {
+      toast.error(json.error ?? 'Erro ao solicitar saque. Tente novamente.')
       setLoading(false)
       return
     }
 
-    toast.success('Saque solicitado! Será processado em breve.')
+    toast.success('PIX enviado com sucesso! O dinheiro já está a caminho.')
     setAmount('')
     setProfile((p: any) => ({ ...p, balance: (p.balance ?? 0) - value }))
 

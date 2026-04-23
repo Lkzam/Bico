@@ -42,7 +42,7 @@ function getCertBuffer(): Buffer {
   return fs.readFileSync(certAbsPath)
 }
 
-function getHttpsAgent() {
+export function getHttpsAgent() {
   const pfx        = getCertBuffer()
   const passphrase = process.env.EFIBANK_CERT_PASSPHRASE ?? ''
   return new https.Agent({ pfx, passphrase })
@@ -51,7 +51,7 @@ function getHttpsAgent() {
 // ── OAuth token (cacheado em memória) ─────────────────────────────────────────
 let cachedToken: { token: string; expiresAt: number } | null = null
 
-async function getAccessToken(): Promise<string> {
+export async function getAccessToken(): Promise<string> {
   const now = Date.now()
   if (cachedToken && cachedToken.expiresAt > now + 10_000) {
     return cachedToken.token

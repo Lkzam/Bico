@@ -65,24 +65,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Erro ao salvar avaliação.' }, { status: 500 })
   }
 
-  // Recalcula a média do perfil avaliado
-  const { data: existing } = await admin
-    .from('profiles')
-    .select('rating, rating_count')
-    .eq('id', reviewedId)
-    .single()
-
-  const oldCount  = existing?.rating_count ?? 0
-  const oldRating = existing?.rating ?? 0
-  const newCount  = oldCount + 1
-  const newRating = parseFloat(((oldRating * oldCount + rating) / newCount).toFixed(2))
-
-  await admin.from('profiles').update({
-    rating:       newRating,
-    rating_count: newCount,
-  }).eq('id', reviewedId)
-
   // Marca o archive como avaliado por esta parte
+  // (a trigger on_review_insert já atualiza o rating do perfil automaticamente)
   const updateField = isCompany ? { company_reviewed: true } : { freelancer_reviewed: true }
   await admin.from('job_archives').update(updateField).eq('id', jobArchiveId)
 
