@@ -82,12 +82,17 @@ export async function POST(req: Request) {
       chave = digits.startsWith('55') ? `+${digits}` : `+55${digits}`
     }
 
+    const pixBody = {
+      valor:          parseFloat(Number(amount).toFixed(2)),
+      chave,
+      infoAdicionais: [] as any[],
+    }
+
+    console.log('[withdraw] Enviando PIX:', JSON.stringify(pixBody))
+
     const { data: pixRes } = await axios.put(
       `${BASE_URL}/v2/gn/pix/${txid}`,
-      {
-        valor: Number(amount).toFixed(2),
-        chave,
-      },
+      pixBody,
       {
         headers: {
           Authorization:  `Bearer ${token}`,
