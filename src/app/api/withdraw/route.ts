@@ -82,16 +82,22 @@ export async function POST(req: Request) {
       chave = digits.startsWith('55') ? `+${digits}` : `+55${digits}`
     }
 
+    // Efí Bank v3: valor como string, pagador = sua chave PIX, favorecido = chave do freelancer
     const pixBody = {
-      valor:          parseFloat(Number(amount).toFixed(2)),
-      chave,
-      infoAdicionais: [] as any[],
+      valor:    Number(amount).toFixed(2),
+      pagador:  {
+        chave:        process.env.EFIBANK_PIX_KEY!,
+        infoPagador:  'Saque Bico',
+      },
+      favorecido: {
+        chave,
+      },
     }
 
-    console.log('[withdraw] Enviando PIX:', JSON.stringify(pixBody))
+    console.log('[withdraw] Enviando PIX v3:', JSON.stringify(pixBody))
 
     const { data: pixRes } = await axios.put(
-      `${BASE_URL}/v2/gn/pix/${txid}`,
+      `${BASE_URL}/v3/gn/pix/${txid}`,
       pixBody,
       {
         headers: {
