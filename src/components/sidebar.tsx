@@ -141,7 +141,9 @@ export function Sidebar({ profile }: SidebarProps) {
           </span>
         </div>
         <Link href="/" style={{ textDecoration: 'none' }}>
-          <Image src="/logo.png" alt="Bico" width={90} height={40} style={{ objectFit: 'contain' }} />
+          <span style={{ fontFamily: 'var(--font-heading), DM Sans, sans-serif', fontSize: 22, fontWeight: 700, color: '#fff', letterSpacing: '-0.02em' }}>
+            Bico
+          </span>
         </Link>
       </div>
 

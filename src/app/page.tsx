@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { ArrowRight } from 'lucide-react'
 
 export default function Home() {
@@ -54,9 +55,9 @@ export default function Home() {
           boxShadow: 'inset 0 0 80px rgba(0,0,0,0.65), 0 0 0 1px rgba(255,255,255,0.03)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}>
-          {/* Ícone estilizado no círculo */}
-          <div style={{ textAlign: 'center', opacity: 0.15 }}>
-            <div style={{ fontSize: 120, lineHeight: 1, fontFamily: 'var(--font-heading)', fontWeight: 900, color: '#fff' }}>B</div>
+          {/* Logo */}
+          <div style={{ textAlign: 'center', opacity: 0.9 }}>
+            <Image src="/logo.svg" alt="Bico" width={320} height={180} style={{ objectFit: 'contain' }} />
           </div>
         </div>
 

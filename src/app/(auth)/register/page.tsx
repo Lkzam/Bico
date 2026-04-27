@@ -82,7 +82,7 @@ export default function RegisterPage() {
         {/* Logo */}
         <div style={{ marginBottom: 48, textAlign: 'center' }}>
           <Link href="/" style={{ textDecoration: 'none' }}>
-            <Image src="/logo.png" alt="Bico" width={110} height={48} style={{ objectFit: 'contain' }} />
+            <span style={{ fontFamily: 'var(--font-heading), DM Sans, sans-serif', fontSize: 28, fontWeight: 700, color: '#fff', letterSpacing: '-0.02em' }}>Bico</span>
           </Link>
         </div>
 

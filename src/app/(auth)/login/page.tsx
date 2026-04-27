@@ -48,7 +48,7 @@ export default function LoginPage() {
         padding: '48px 60px',
       }} className="left-panel">
         <Link href="/" style={{ textDecoration: 'none' }}>
-          <Image src="/logo.png" alt="Bico" width={100} height={44} style={{ objectFit: 'contain' }} />
+          <span style={{ fontFamily: 'var(--font-heading), DM Sans, sans-serif', fontSize: 22, fontWeight: 700, color: '#fff', letterSpacing: '-0.02em' }}>Bico</span>
         </Link>
 
         <div>
@@ -81,7 +81,7 @@ export default function LoginPage() {
           {/* Logo mobile */}
           <div style={{ marginBottom: 48, textAlign: 'center' }}>
             <Link href="/" style={{ textDecoration: 'none' }}>
-              <Image src="/logo.png" alt="Bico" width={110} height={48} style={{ objectFit: 'contain' }} />
+              <span style={{ fontFamily: 'var(--font-heading), DM Sans, sans-serif', fontSize: 28, fontWeight: 700, color: '#fff', letterSpacing: '-0.02em' }}>Bico</span>
             </Link>
           </div>
 
