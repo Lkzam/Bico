@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 import { Toaster } from 'sonner'
@@ -81,7 +82,7 @@ export default function RegisterPage() {
         {/* Logo */}
         <div style={{ marginBottom: 48, textAlign: 'center' }}>
           <Link href="/" style={{ textDecoration: 'none' }}>
-            <span style={{ fontFamily: 'var(--font-heading), DM Sans, sans-serif', fontSize: 28, fontWeight: 700, color: '#fff', letterSpacing: '-0.02em' }}>Bico</span>
+            <Image src="/logo.png" alt="Bico" width={110} height={48} style={{ objectFit: 'contain' }} />
           </Link>
         </div>
 

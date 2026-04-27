@@ -18,7 +18,7 @@ export async function GET(req: Request) {
   const agent = getHttpsAgent()
 
   const { data } = await axios.get(
-    `${BASE_URL}/v3/gn/pix/${idEnvio}`,
+    `${BASE_URL}/v2/gn/pix/enviados/id-envio/${idEnvio}`,
     {
       headers: { Authorization: `Bearer ${token}` },
       httpsAgent: agent,

@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
@@ -140,9 +141,7 @@ export function Sidebar({ profile }: SidebarProps) {
           </span>
         </div>
         <Link href="/" style={{ textDecoration: 'none' }}>
-          <span style={{ fontFamily: 'var(--font-heading), DM Sans, sans-serif', fontSize: 22, fontWeight: 700, color: '#fff', letterSpacing: '-0.02em' }}>
-            Bico
-          </span>
+          <Image src="/logo.png" alt="Bico" width={90} height={40} style={{ objectFit: 'contain' }} />
         </Link>
       </div>
 
