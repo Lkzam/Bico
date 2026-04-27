@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { toast, Toaster } from 'sonner'
-import { Check, ArrowRight } from 'lucide-react'
+import { Check, ArrowRight, Wifi, MapPin } from 'lucide-react'
 
 export default function PostJobPage() {
   const router = useRouter()
@@ -12,6 +12,7 @@ export default function PostJobPage() {
   const [loading, setLoading] = useState(false)
   const [allTags, setAllTags] = useState<any[]>([])
   const [selectedTagIds, setSelectedTagIds] = useState<Set<string>>(new Set())
+  const [workType, setWorkType] = useState<'remote' | 'presential'>('remote')
   const [form, setForm] = useState({ title: '', description: '', value: '', deadline_hours: '' })
 
   useEffect(() => {
@@ -47,6 +48,7 @@ export default function PostJobPage() {
         description: form.description,
         value: parseFloat(form.value),
         deadline_hours: form.deadline_hours ? parseInt(form.deadline_hours) : null,
+        work_type: workType,
         status: 'open',
       })
       .select().single()
@@ -106,6 +108,44 @@ export default function PostJobPage() {
             </p>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+
+              {/* Presencial / Remoto */}
+              <div>
+                <label style={labelStyle}>Tipo de trabalho</label>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  {([
+                    { value: 'remote',     label: 'Remoto',     sub: 'Pode ser feito de qualquer lugar', icon: Wifi },
+                    { value: 'presential', label: 'Presencial', sub: 'Exige presença física',           icon: MapPin },
+                  ] as { value: 'remote' | 'presential'; label: string; sub: string; icon: any }[]).map(opt => {
+                    const active = workType === opt.value
+                    return (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => setWorkType(opt.value)}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: 10,
+                          padding: '12px 14px', textAlign: 'left',
+                          background: active ? 'rgba(217,78,24,0.12)' : 'rgba(255,255,255,0.03)',
+                          border: `1px solid ${active ? '#d94e18' : 'rgba(255,255,255,0.1)'}`,
+                          cursor: 'pointer', transition: 'all 0.15s',
+                          fontFamily: 'inherit',
+                        }}>
+                        <opt.icon size={15} color={active ? '#d94e18' : 'rgba(185,190,200,0.4)'} style={{ flexShrink: 0 }} />
+                        <div>
+                          <div style={{ fontSize: 13, fontWeight: 600, color: active ? '#fff' : 'rgba(185,190,200,0.7)', marginBottom: 2 }}>
+                            {opt.label}
+                          </div>
+                          <div style={{ fontSize: 11, color: active ? 'rgba(212,120,58,0.8)' : 'rgba(185,190,200,0.35)' }}>
+                            {opt.sub}
+                          </div>
+                        </div>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+
               <div>
                 <label style={labelStyle}>Título</label>
                 <input

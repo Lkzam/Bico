@@ -18,7 +18,6 @@ export default function SettingsPage() {
   // Form fields
   const [name, setName] = useState('')
   const [bio, setBio] = useState('')
-  const [pixKey, setPixKey] = useState('')
   const [portfolioUrl, setPortfolioUrl] = useState('')
   const [website, setWebsite] = useState('')
 
@@ -38,7 +37,6 @@ export default function SettingsPage() {
       setProfile(prof)
       setName(prof.name ?? '')
       setBio(prof.bio ?? '')
-      setPixKey(prof.pix_key ?? '')
       setPortfolioUrl(prof.portfolio_url ?? '')
       setWebsite(prof.website ?? '')
 
@@ -68,7 +66,6 @@ export default function SettingsPage() {
 
     const updates: any = { name: name.trim(), bio: bio.trim() }
     if (profile.role === 'freelancer') {
-      updates.pix_key = pixKey.trim()
       updates.portfolio_url = portfolioUrl.trim()
     } else {
       updates.website = website.trim()
@@ -198,30 +195,17 @@ export default function SettingsPage() {
                 </div>
 
                 {profile.role === 'freelancer' && (
-                  <>
-                    <div>
-                      <label style={labelStyle}>Chave PIX</label>
-                      <input
-                        value={pixKey}
-                        onChange={e => setPixKey(e.target.value)}
-                        placeholder="CPF, email, telefone ou chave aleatória"
-                        style={inputStyle}
-                        onFocus={e => (e.target.style.borderColor = '#d94e18')}
-                        onBlur={e => (e.target.style.borderColor = 'rgba(255,255,255,0.1)')}
-                      />
-                    </div>
-                    <div>
-                      <label style={labelStyle}>URL do portfólio</label>
-                      <input
-                        value={portfolioUrl}
-                        onChange={e => setPortfolioUrl(e.target.value)}
-                        placeholder="https://meuportfolio.com"
-                        style={inputStyle}
-                        onFocus={e => (e.target.style.borderColor = '#d94e18')}
-                        onBlur={e => (e.target.style.borderColor = 'rgba(255,255,255,0.1)')}
-                      />
-                    </div>
-                  </>
+                  <div>
+                    <label style={labelStyle}>URL do portfólio</label>
+                    <input
+                      value={portfolioUrl}
+                      onChange={e => setPortfolioUrl(e.target.value)}
+                      placeholder="https://meuportfolio.com"
+                      style={inputStyle}
+                      onFocus={e => (e.target.style.borderColor = '#d94e18')}
+                      onBlur={e => (e.target.style.borderColor = 'rgba(255,255,255,0.1)')}
+                    />
+                  </div>
                 )}
 
                 {profile.role === 'company' && (
