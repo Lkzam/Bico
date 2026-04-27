@@ -13,7 +13,7 @@ export default function PostJobPage() {
   const [allTags, setAllTags] = useState<any[]>([])
   const [selectedTagIds, setSelectedTagIds] = useState<Set<string>>(new Set())
   const [workType, setWorkType] = useState<'remote' | 'presential'>('remote')
-  const [form, setForm] = useState({ title: '', description: '', value: '', deadline_hours: '' })
+  const [form, setForm] = useState({ title: '', description: '', value: '', deadline_hours: '', address: '' })
 
   useEffect(() => {
     supabase.from('tags').select('*').order('name').then(({ data }) => setAllTags(data ?? []))
@@ -30,6 +30,7 @@ export default function PostJobPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (selectedTagIds.size === 0) { toast.error('Selecione pelo menos uma habilidade.'); return }
+    if (workType === 'presential' && !form.address.trim()) { toast.error('Informe o endereço do trabalho presencial.'); return }
 
     setLoading(true)
 
@@ -49,6 +50,7 @@ export default function PostJobPage() {
         value: parseFloat(form.value),
         deadline_hours: form.deadline_hours ? parseInt(form.deadline_hours) : null,
         work_type: workType,
+        address: workType === 'presential' ? form.address.trim() : null,
         status: 'open',
       })
       .select().single()
@@ -145,6 +147,34 @@ export default function PostJobPage() {
                   })}
                 </div>
               </div>
+
+              {/* Endereço — só aparece quando presencial */}
+              {workType === 'presential' && (
+                <div style={{
+                  padding: '14px 16px',
+                  background: 'rgba(217,78,24,0.06)',
+                  border: '1px solid rgba(217,78,24,0.2)',
+                  display: 'flex', flexDirection: 'column', gap: 8,
+                  animation: 'fadeIn 0.2s ease',
+                }}>
+                  <label style={{ ...labelStyle, color: '#d4783a' }}>
+                    <MapPin size={11} style={{ display: 'inline', marginRight: 5, verticalAlign: 'middle' }} />
+                    Endereço do trabalho
+                  </label>
+                  <input
+                    placeholder="Ex: Rua das Flores, 123 — Pinheiros, São Paulo - SP"
+                    value={form.address}
+                    onChange={e => setForm(f => ({ ...f, address: e.target.value }))}
+                    required={workType === 'presential'}
+                    style={inputStyle}
+                    onFocus={e => (e.target.style.borderColor = '#d94e18')}
+                    onBlur={e => (e.target.style.borderColor = 'rgba(255,255,255,0.1)')}
+                  />
+                  <span style={{ fontSize: 11, color: 'rgba(185,190,200,0.35)' }}>
+                    Este endereço será exibido para o freelancer após aceitar o trabalho.
+                  </span>
+                </div>
+              )}
 
               <div>
                 <label style={labelStyle}>Título</label>
