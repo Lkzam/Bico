@@ -82,6 +82,17 @@ export default function CompanyJobsPage() {
       setLoaded(true)
     }
     load()
+
+    // Realtime: remove job da lista se o freelancer cancelar do lado dele
+    const channel = supabase
+      .channel('company-job-deletes')
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'jobs' }, (payload) => {
+        const deletedId = (payload.old as any)?.id
+        if (deletedId) setJobs(prev => prev.filter(j => j.id !== deletedId))
+      })
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
   }, [])
 
   if (!loaded) return null
@@ -98,8 +109,8 @@ export default function CompanyJobsPage() {
     const json = await res.json()
     setCancelling(false)
     if (!res.ok) { toast.error(json.error ?? 'Erro ao cancelar.'); return }
-    toast.success('Trabalho cancelado.')
-    setJobs(prev => prev.map(j => j.id === cancelJobId ? { ...j, status: 'cancelled' } : j))
+    toast.success('Trabalho cancelado e removido.')
+    setJobs(prev => prev.filter(j => j.id !== cancelJobId))
     setCancelJobId(null)
   }
 

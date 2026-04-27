@@ -5,6 +5,7 @@ import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { toast } from 'sonner'
 import {
   LayoutDashboard, Briefcase, MessageSquare,
   Star, Wallet, LogOut, PlusCircle, Settings, LifeBuoy,
@@ -64,19 +65,14 @@ export function Sidebar({ profile }: SidebarProps) {
 
     // 2. Realtime: ouve INSERT na tabela messages
     //    Quando chegar mensagem de outra pessoa num dos meus chats → atualiza badge
-    const channel = supabase
+    const messagesChannel = supabase
       .channel(`sidebar-unread-${profile.id}`)
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'messages' },
         (payload) => {
           const msg = payload.new as { sender_id: string; chat_id: string }
-
-          // Ignora mensagens enviadas por mim
           if (msg.sender_id === profile.id) return
-
-          // Só atualiza se for num dos meus chats
-          // (chatIdsRef pode estar vazio no primeiro evento — fetchUnread cuida disso)
           if (chatIdsRef.current.length === 0 || chatIdsRef.current.includes(msg.chat_id)) {
             fetchUnread()
           }
@@ -84,11 +80,31 @@ export function Sidebar({ profile }: SidebarProps) {
       )
       .subscribe()
 
-    // 3. Polling leve de fallback (30s) caso Realtime perca algum evento
+    // 3. Realtime: ouve notificações de cancelamento (INSERT em notifications)
+    const notifChannel = supabase
+      .channel(`sidebar-notif-${profile.id}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'notifications', filter: `profile_id=eq.${profile.id}` },
+        async (payload) => {
+          const notif = payload.new as { id: string; title: string; body: string }
+          // Exibe o toast de cancelamento
+          toast.error(notif.body, {
+            duration: 10000,
+            description: notif.title,
+          })
+          // Marca como lida automaticamente
+          await supabase.from('notifications').update({ read: true }).eq('id', notif.id)
+        }
+      )
+      .subscribe()
+
+    // 4. Polling leve de fallback (30s) caso Realtime perca algum evento
     const interval = setInterval(fetchUnread, 30_000)
 
     return () => {
-      supabase.removeChannel(channel)
+      supabase.removeChannel(messagesChannel)
+      supabase.removeChannel(notifChannel)
       clearInterval(interval)
     }
   }, []) // mount apenas uma vez — Realtime mantém a conexão ativa

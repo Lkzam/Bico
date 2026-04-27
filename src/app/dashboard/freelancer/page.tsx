@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { formatCurrency, formatDate } from '@/lib/utils'
-import { Wallet, Star, CheckCircle, Clock, ArrowRight, Zap, Tag, X, Wifi, MapPin } from 'lucide-react'
+import { Wallet, Star, CheckCircle, Clock, ArrowRight, Zap, Tag, X, Wifi, MapPin, Trash2 } from 'lucide-react'
 import { calcFreelancerReceives, PLATFORM_FEE_FREELANCER } from '@/lib/fees'
 import Link from 'next/link'
 import { toast, Toaster } from 'sonner'
@@ -31,6 +31,8 @@ export default function FreelancerDashboard() {
   const [userTagIds, setUserTagIds] = useState<string[]>([])
   const [accepting, setAccepting] = useState<string | null>(null)
   const [confirmJob, setConfirmJob] = useState<any | null>(null)
+  const [cancelJobId, setCancelJobId] = useState<string | null>(null)
+  const [cancelling, setCancelling] = useState(false)
   const userTagIdsRef = useRef<string[]>([])
 
   useEffect(() => {
@@ -124,6 +126,21 @@ export default function FreelancerDashboard() {
     return () => { supabase.removeChannel(channel) }
   }, [profile])
 
+  // Realtime: remove job das listas se a empresa cancelar do lado dela
+  useEffect(() => {
+    if (!profile) return
+    const channel = supabase
+      .channel('freelancer-job-deletes')
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'jobs' }, (payload) => {
+        const deletedId = (payload.old as any)?.id
+        if (!deletedId) return
+        setMyJobs(prev => prev.filter(j => j.id !== deletedId))
+        setAvailableJobs(prev => prev.filter(j => j.id !== deletedId))
+      })
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [profile])
+
   async function loadAvailableJobs(tagIds: string[], profileId: string) {
     if (tagIds.length === 0) return
     const { data: matchingJobTags } = await supabase
@@ -166,6 +183,18 @@ export default function FreelancerDashboard() {
     setMyJobs(jobs ?? [])
     await loadAvailableJobs(userTagIds, profile.id)
     if (json.chatId) router.push(`/dashboard/messages/${json.chatId}`)
+  }
+
+  async function confirmCancel() {
+    if (!cancelJobId) return
+    setCancelling(true)
+    const res = await fetch(`/api/jobs/${cancelJobId}/cancel`, { method: 'POST' })
+    const json = await res.json()
+    setCancelling(false)
+    if (!res.ok) { toast.error(json.error ?? 'Erro ao cancelar.'); return }
+    toast.success('Trabalho cancelado e removido.')
+    setMyJobs(prev => prev.filter(j => j.id !== cancelJobId))
+    setCancelJobId(null)
   }
 
   if (!profile) return null
@@ -471,6 +500,57 @@ export default function FreelancerDashboard() {
         )
       })()}
 
+      {/* Modal confirmação cancelamento (freelancer) */}
+      {cancelJobId && (() => {
+        const job = myJobs.find(j => j.id === cancelJobId)
+        if (!job) return null
+        return (
+          <div style={{
+            position: 'fixed', inset: 0, zIndex: 1000,
+            background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(4px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24,
+          }} onClick={e => { if (e.target === e.currentTarget) setCancelJobId(null) }}>
+            <div style={{
+              width: '100%', maxWidth: 400, background: '#0f1219',
+              border: '1px solid rgba(239,68,68,0.2)', padding: 32,
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+                <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Trash2 size={16} style={{ color: '#ef4444' }} />
+                </div>
+                <div>
+                  <p style={{ fontSize: '0.58rem', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#ef4444', margin: '0 0 2px' }}>Cancelar trabalho</p>
+                  <h3 style={{ fontSize: 16, fontWeight: 700, color: '#fff', margin: 0 }}>{job.title}</h3>
+                </div>
+              </div>
+              <p style={{ fontSize: 13, color: 'rgba(185,190,200,0.6)', margin: '0 0 24px', lineHeight: 1.5 }}>
+                Tem certeza que deseja cancelar este trabalho? A empresa será notificada e o job será removido. Esta ação não pode ser desfeita.
+              </p>
+              <div style={{ display: 'flex', gap: 10 }}>
+                <button onClick={() => setCancelJobId(null)} style={{
+                  flex: 1, padding: '11px', background: 'transparent',
+                  border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(185,190,200,0.6)',
+                  cursor: 'pointer', fontSize: '0.65rem', fontWeight: 700,
+                  letterSpacing: '0.1em', textTransform: 'uppercase', fontFamily: 'inherit',
+                }}>
+                  Voltar
+                </button>
+                <button onClick={confirmCancel} disabled={cancelling} style={{
+                  flex: 1, padding: '11px',
+                  background: cancelling ? 'rgba(239,68,68,0.3)' : '#ef4444',
+                  border: 'none', color: '#fff',
+                  cursor: cancelling ? 'not-allowed' : 'pointer',
+                  fontSize: '0.65rem', fontWeight: 700,
+                  letterSpacing: '0.1em', textTransform: 'uppercase', fontFamily: 'inherit',
+                }}>
+                  {cancelling ? 'Cancelando...' : 'Confirmar'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
+
       {/* My Jobs */}
       <div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
@@ -505,7 +585,7 @@ export default function FreelancerDashboard() {
                     {job.profiles?.name} · {formatDate(job.created_at)}
                   </p>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <span style={{ fontSize: 15, fontWeight: 700, color: '#fff', fontFamily: 'var(--font-heading)' }}>
                     {formatCurrency(job.value)}
                   </span>
@@ -518,6 +598,25 @@ export default function FreelancerDashboard() {
                   }}>
                     {statusMap[job.status]?.label ?? job.status}
                   </span>
+                  {job.status === 'in_progress' && (
+                    <button
+                      onClick={() => setCancelJobId(job.id)}
+                      title="Cancelar trabalho"
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 5,
+                        padding: '5px 10px',
+                        background: 'rgba(239,68,68,0.08)',
+                        border: '1px solid rgba(239,68,68,0.3)',
+                        color: '#ef4444', cursor: 'pointer',
+                        fontSize: '0.6rem', fontWeight: 700,
+                        letterSpacing: '0.08em', textTransform: 'uppercase',
+                        fontFamily: 'inherit', transition: 'all 0.15s',
+                      }}
+                      onMouseOver={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(239,68,68,0.18)' }}
+                      onMouseOut={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(239,68,68,0.08)' }}>
+                      <Trash2 size={10} /> Cancelar
+                    </button>
+                  )}
                 </div>
               </div>
             ))
