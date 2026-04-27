@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { toast, Toaster } from 'sonner'
-import { User, Tag, Save, X, Check } from 'lucide-react'
+import { User, Tag, Save, Check, Lightbulb, Send } from 'lucide-react'
 
 export default function SettingsPage() {
   const supabase = createClient()
@@ -21,6 +21,10 @@ export default function SettingsPage() {
   const [pixKey, setPixKey] = useState('')
   const [portfolioUrl, setPortfolioUrl] = useState('')
   const [website, setWebsite] = useState('')
+
+  // Tag suggestion
+  const [suggestionText, setSuggestionText] = useState('')
+  const [sendingSuggestion, setSendingSuggestion] = useState(false)
 
   useEffect(() => {
     async function load() {
@@ -62,7 +66,6 @@ export default function SettingsPage() {
     if (!profile) return
     setSaving(true)
 
-    // Update profile info
     const updates: any = { name: name.trim(), bio: bio.trim() }
     if (profile.role === 'freelancer') {
       updates.pix_key = pixKey.trim()
@@ -80,14 +83,10 @@ export default function SettingsPage() {
       return
     }
 
-    // Sync tags: delete all, re-insert selected
     await supabase.from('user_tags').delete().eq('profile_id', profile.id)
 
     if (userTagIds.size > 0) {
-      const rows = Array.from(userTagIds).map(tag_id => ({
-        profile_id: profile.id,
-        tag_id,
-      }))
+      const rows = Array.from(userTagIds).map(tag_id => ({ profile_id: profile.id, tag_id }))
       const { error: tagError } = await supabase.from('user_tags').insert(rows)
       if (tagError) {
         toast.error('Erro ao salvar tags.')
@@ -99,6 +98,27 @@ export default function SettingsPage() {
     setProfile((p: any) => ({ ...p, ...updates }))
     toast.success('Perfil atualizado com sucesso!')
     setSaving(false)
+  }
+
+  async function handleSendSuggestion() {
+    const trimmed = suggestionText.trim()
+    if (!trimmed) return
+    if (trimmed.length < 2) { toast.error('Digite um nome de tag válido.'); return }
+    if (!profile) return
+
+    setSendingSuggestion(true)
+    const { error } = await supabase.from('tag_suggestions').insert({
+      profile_id: profile.id,
+      tag_name: trimmed,
+    })
+
+    if (error) {
+      toast.error('Erro ao enviar sugestão. Tente novamente.')
+    } else {
+      toast.success('Sugestão enviada! Vamos analisar e adicionar em breve.')
+      setSuggestionText('')
+    }
+    setSendingSuggestion(false)
   }
 
   const inputStyle = {
@@ -266,6 +286,74 @@ export default function SettingsPage() {
                   {userTagIds.size} {userTagIds.size === 1 ? 'habilidade selecionada' : 'habilidades selecionadas'}
                 </p>
               )}
+
+              {/* Botão de sugestão de tag */}
+              <div style={{
+                marginTop: 24,
+                paddingTop: 20,
+                borderTop: '1px solid rgba(255,255,255,0.06)',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+                  <Lightbulb size={13} style={{ color: '#d4783a' }} />
+                  <span style={{ fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#d4783a' }}>
+                    Não achou sua área?
+                  </span>
+                </div>
+                <p style={{ fontSize: 12, color: 'rgba(185,190,200,0.4)', margin: '0 0 12px', lineHeight: 1.5 }}>
+                  Sugira uma tag e analisaremos para adicionar ao app.
+                </p>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <input
+                    value={suggestionText}
+                    onChange={e => setSuggestionText(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleSendSuggestion() } }}
+                    placeholder="Ex: Culinária, Astrologia..."
+                    maxLength={60}
+                    style={{
+                      flex: 1, padding: '9px 14px',
+                      background: 'rgba(255,255,255,0.04)',
+                      border: '1px solid rgba(255,255,255,0.1)',
+                      color: '#fff', fontSize: 13, outline: 'none',
+                      fontFamily: 'inherit', transition: 'border-color 0.2s',
+                    }}
+                    onFocus={e => (e.target.style.borderColor = '#d4783a')}
+                    onBlur={e => (e.target.style.borderColor = 'rgba(255,255,255,0.1)')}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleSendSuggestion}
+                    disabled={sendingSuggestion || !suggestionText.trim()}
+                    style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 6,
+                      padding: '9px 18px',
+                      background: sendingSuggestion || !suggestionText.trim()
+                        ? 'rgba(212,120,58,0.3)'
+                        : 'rgba(212,120,58,0.15)',
+                      border: '1px solid rgba(212,120,58,0.4)',
+                      color: sendingSuggestion || !suggestionText.trim()
+                        ? 'rgba(212,120,58,0.4)'
+                        : '#d4783a',
+                      fontSize: 12, fontWeight: 600,
+                      cursor: sendingSuggestion || !suggestionText.trim() ? 'not-allowed' : 'pointer',
+                      fontFamily: 'inherit', transition: 'all 0.15s',
+                      whiteSpace: 'nowrap',
+                    }}
+                    onMouseOver={e => {
+                      if (!sendingSuggestion && suggestionText.trim()) {
+                        e.currentTarget.style.background = 'rgba(212,120,58,0.25)'
+                        e.currentTarget.style.borderColor = '#d4783a'
+                      }
+                    }}
+                    onMouseOut={e => {
+                      e.currentTarget.style.background = 'rgba(212,120,58,0.15)'
+                      e.currentTarget.style.borderColor = 'rgba(212,120,58,0.4)'
+                    }}
+                  >
+                    <Send size={12} />
+                    {sendingSuggestion ? 'Enviando...' : 'Recomendar tag'}
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
