@@ -240,7 +240,13 @@ export default function PostJobPage() {
               Freelancers com essas tags serão notificados automaticamente.
             </p>
 
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            <div style={{
+              display: 'flex', flexWrap: 'wrap', gap: 8,
+              maxHeight: 280, overflowY: 'auto',
+              paddingRight: 4,
+              scrollbarWidth: 'thin',
+              scrollbarColor: 'rgba(217,78,24,0.4) rgba(255,255,255,0.04)',
+            }}>
               {allTags.map(tag => {
                 const active = selectedTagIds.has(tag.id)
                 return (
