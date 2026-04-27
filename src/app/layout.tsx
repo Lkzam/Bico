@@ -17,6 +17,11 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "Bico — Ganhe mais fazendo o que você sabe",
   description: "Conectamos empresas a profissionais para trabalhos rápidos. Rápido, seguro e sem burocracia.",
+  icons: {
+    icon: '/logo.svg',
+    shortcut: '/logo.svg',
+    apple: '/logo.svg',
+  },
 };
 
 export default function RootLayout({

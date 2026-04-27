@@ -108,7 +108,7 @@ export default function Home() {
             maxWidth: 400, margin: '0 0 36px', fontWeight: 400,
           }}>
             Conectamos profissionais a empresas que precisam de bicos.
-            Receba uma notificação, aceite na hora — igual ao Uber —
+            Receba uma notificação, aceite na hora
             e receba via PIX direto no app.
           </p>
 
@@ -312,7 +312,7 @@ export default function Home() {
       <footer style={{ background: '#0b0e17', borderTop: '1px solid rgba(185,190,200,0.1)', padding: '48px' }}>
         <div style={{ maxWidth: 1400, margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
           <span style={{ fontFamily: 'var(--font-heading)', fontSize: 18, fontWeight: 700, color: '#fff' }}>Bico</span>
-          <p style={{ fontSize: '0.85rem', color: 'rgba(185,190,200,0.5)' }}>© 2025 Bico. Todos os direitos reservados.</p>
+          <p style={{ fontSize: '0.85rem', color: 'rgba(185,190,200,0.5)' }}>©NovaIris. Todos os direitos reservados.</p>
           <div style={{ display: 'flex', gap: 24 }}>
             <Link href="/login" style={{ fontSize: '0.95rem', color: 'rgba(185,190,200,0.6)', textDecoration: 'none' }}>Entrar</Link>
             <Link href="/register" style={{ fontSize: '0.95rem', color: 'rgba(185,190,200,0.6)', textDecoration: 'none' }}>Cadastrar</Link>
