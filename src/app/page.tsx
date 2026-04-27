@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { ArrowRight } from 'lucide-react'
+import LiquidEther from '@/components/LiquidEther'
 
 export default function Home() {
   return (
@@ -45,21 +46,22 @@ export default function Home() {
       {/* ── HERO ── */}
       <section style={{ position: 'relative', width: '100%', minHeight: '100vh', background: '#0b0808', overflow: 'hidden', display: 'flex', alignItems: 'center' }}>
 
-        {/* Círculo decorativo direita */}
-        <div style={{
-          position: 'absolute', width: '62vh', height: '62vh',
-          minWidth: 320, minHeight: 320,
-          borderRadius: '50%', background: '#100b0b',
-          top: '50%', left: '58%', transform: 'translateY(-50%)',
-          zIndex: 1,
-          boxShadow: 'inset 0 0 80px rgba(0,0,0,0.65), 0 0 0 1px rgba(255,255,255,0.03)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}>
-          {/* Logo */}
-          <div style={{ textAlign: 'center', opacity: 0.9 }}>
-            <Image src="/logo.svg" alt="Bico" width={320} height={180} style={{ objectFit: 'contain' }} />
-          </div>
+        {/* LiquidEther fundo */}
+        <div style={{ position: 'absolute', inset: 0, zIndex: 0 }}>
+          <LiquidEther
+            colors={['#d94e18', '#c04010', '#d4783a']}
+            mouseForce={20}
+            cursorSize={100}
+            isViscous={true}
+            viscous={30}
+            autoDemo={true}
+            autoSpeed={0.5}
+            autoIntensity={2.2}
+          />
         </div>
+
+        {/* Overlay escuro suave para legibilidade do texto */}
+        <div style={{ position: 'absolute', inset: 0, zIndex: 1, background: 'linear-gradient(to right, rgba(11,8,8,0.82) 0%, rgba(11,8,8,0.55) 55%, rgba(11,8,8,0.1) 100%)' }} />
 
         {/* Texto esquerda */}
         <div style={{
