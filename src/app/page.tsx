@@ -63,6 +63,18 @@ export default function Home() {
         {/* Overlay escuro suave para legibilidade do texto */}
         <div style={{ position: 'absolute', inset: 0, zIndex: 1, background: 'linear-gradient(to right, rgba(11,8,8,0.82) 0%, rgba(11,8,8,0.55) 55%, rgba(11,8,8,0.1) 100%)' }} />
 
+        {/* Logo SVG direita */}
+        <div style={{
+          position: 'absolute',
+          top: '50%', left: '62%',
+          transform: 'translateY(-50%)',
+          zIndex: 5,
+          opacity: 0.92,
+          pointerEvents: 'none',
+        }}>
+          <Image src="/logo.svg" alt="Bico" width={340} height={192} style={{ objectFit: 'contain', filter: 'drop-shadow(0 0 40px rgba(217,78,24,0.35))' }} />
+        </div>
+
         {/* Texto esquerda */}
         <div style={{
           position: 'relative', zIndex: 10,
