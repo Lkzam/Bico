@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { formatCurrency, formatDate } from '@/lib/utils'
-import { Wallet, Star, CheckCircle, Clock, ArrowRight, Zap, Tag, X } from 'lucide-react'
+import { Wallet, Star, CheckCircle, Clock, ArrowRight, Zap, Tag, X, Wifi, MapPin } from 'lucide-react'
 import { calcFreelancerReceives, PLATFORM_FEE_FREELANCER } from '@/lib/fees'
 import Link from 'next/link'
 import { toast, Toaster } from 'sonner'
@@ -342,7 +342,7 @@ export default function FreelancerDashboard() {
             background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(4px)',
             display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24,
           }} onClick={e => { if (e.target === e.currentTarget) setConfirmJob(null) }}>
-            <div style={{ width: '100%', maxWidth: 420, background: '#0f1219', border: '1px solid rgba(255,255,255,0.1)', padding: 32 }}>
+            <div style={{ width: '100%', maxWidth: 500, background: '#0f1219', border: '1px solid rgba(255,255,255,0.1)', padding: 32 }}>
 
               {/* Header */}
               <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 24 }}>
@@ -362,6 +362,68 @@ export default function FreelancerDashboard() {
                   <X size={18} />
                 </button>
               </div>
+
+              {/* Tipo: remoto ou presencial */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+                {confirmJob.work_type === 'presential' ? (
+                  <span style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 5,
+                    fontSize: 11, fontWeight: 700, padding: '4px 10px',
+                    background: 'rgba(251,191,36,0.1)', border: '1px solid rgba(251,191,36,0.3)',
+                    color: '#fbbf24',
+                  }}>
+                    <MapPin size={10} /> Presencial
+                  </span>
+                ) : (
+                  <span style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 5,
+                    fontSize: 11, fontWeight: 700, padding: '4px 10px',
+                    background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.3)',
+                    color: '#60a5fa',
+                  }}>
+                    <Wifi size={10} /> Remoto
+                  </span>
+                )}
+              </div>
+
+              {/* Descrição do job */}
+              <div style={{ marginBottom: 16 }}>
+                <p style={{ fontSize: '0.58rem', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'rgba(185,190,200,0.4)', margin: '0 0 8px' }}>
+                  Descrição
+                </p>
+                <div style={{
+                  padding: '12px 14px',
+                  background: 'rgba(255,255,255,0.03)',
+                  border: '1px solid rgba(255,255,255,0.07)',
+                  fontSize: 13, color: 'rgba(185,190,200,0.75)',
+                  lineHeight: 1.6,
+                  maxHeight: 100,
+                  overflowY: 'auto',
+                  scrollbarWidth: 'thin',
+                  scrollbarColor: 'rgba(255,255,255,0.1) transparent',
+                }}>
+                  {confirmJob.description}
+                </div>
+              </div>
+
+              {/* Endereço — só aparece se for presencial */}
+              {confirmJob.work_type === 'presential' && confirmJob.address && (
+                <div style={{ marginBottom: 16 }}>
+                  <p style={{ fontSize: '0.58rem', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'rgba(251,191,36,0.6)', margin: '0 0 8px' }}>
+                    Endereço do trabalho
+                  </p>
+                  <div style={{
+                    display: 'flex', alignItems: 'flex-start', gap: 8,
+                    padding: '12px 14px',
+                    background: 'rgba(251,191,36,0.06)',
+                    border: '1px solid rgba(251,191,36,0.2)',
+                    fontSize: 13, color: '#fbbf24', lineHeight: 1.5,
+                  }}>
+                    <MapPin size={14} style={{ flexShrink: 0, marginTop: 1 }} />
+                    <span>{confirmJob.address}</span>
+                  </div>
+                </div>
+              )}
 
               {/* Breakdown financeiro */}
               <p style={{ fontSize: '0.58rem', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'rgba(185,190,200,0.4)', margin: '0 0 8px' }}>
