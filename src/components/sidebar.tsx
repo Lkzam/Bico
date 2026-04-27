@@ -7,7 +7,7 @@ import { useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import {
   LayoutDashboard, Briefcase, MessageSquare,
-  Star, Wallet, LogOut, PlusCircle, Settings,
+  Star, Wallet, LogOut, PlusCircle, Settings, LifeBuoy,
 } from 'lucide-react'
 import type { Profile } from '@/types'
 
@@ -109,6 +109,7 @@ export function Sidebar({ profile }: SidebarProps) {
         { href: '/dashboard/messages',         label: 'Mensagens',         icon: MessageSquare   },
         { href: '/dashboard/company/reviews',  label: 'Avaliações',        icon: Star            },
         { href: '/dashboard/settings',         label: 'Configurações',     icon: Settings        },
+        { href: '/dashboard/support',          label: 'Suporte',           icon: LifeBuoy        },
       ]
     : [
         { href: '/dashboard/freelancer',          label: 'Dashboard',      icon: LayoutDashboard },
@@ -117,6 +118,7 @@ export function Sidebar({ profile }: SidebarProps) {
         { href: '/dashboard/freelancer/withdraw', label: 'Sacar',          icon: Wallet          },
         { href: '/dashboard/freelancer/reviews',  label: 'Avaliações',     icon: Star            },
         { href: '/dashboard/settings',            label: 'Configurações',  icon: Settings        },
+        { href: '/dashboard/support',             label: 'Suporte',        icon: LifeBuoy        },
       ]
 
   async function handleLogout() {
