@@ -292,16 +292,6 @@ export default function CompanyJobsPage() {
                       </button>
                     )}
 
-                    {/* Chat (em andamento) */}
-                    {job.status === 'in_progress' && (
-                      <Link href="/dashboard/messages" style={{
-                        display: 'flex', alignItems: 'center', gap: 4,
-                        fontSize: 12, color: '#d4783a', textDecoration: 'none',
-                      }}>
-                        Chat <ArrowRight size={11} />
-                      </Link>
-                    )}
-
                     {/* Cancelar (aberto ou em andamento) */}
                     {['open', 'in_progress'].includes(job.status) && (
                       <button
@@ -321,6 +311,16 @@ export default function CompanyJobsPage() {
                         onMouseOut={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(239,68,68,0.08)' }}>
                         <Trash2 size={11} /> Cancelar
                       </button>
+                    )}
+
+                    {/* Chat — sempre por último (em andamento) */}
+                    {job.status === 'in_progress' && (
+                      <Link href="/dashboard/messages" style={{
+                        display: 'flex', alignItems: 'center', gap: 4,
+                        fontSize: 12, color: '#d4783a', textDecoration: 'none', whiteSpace: 'nowrap',
+                      }}>
+                        Chat <ArrowRight size={11} />
+                      </Link>
                     )}
                   </div>
                 </div>

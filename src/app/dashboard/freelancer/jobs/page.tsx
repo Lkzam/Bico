@@ -158,12 +158,6 @@ export default function FreelancerJobsPage() {
                         onMouseOut={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(34,197,94,0.12)' }}>
                         <Upload size={11} /> Entregar
                       </button>
-                      <Link href="/dashboard/messages" style={{
-                        display: 'flex', alignItems: 'center', gap: 4,
-                        fontSize: 12, color: '#d4783a', textDecoration: 'none',
-                      }}>
-                        Chat <ArrowRight size={11} />
-                      </Link>
                       <button
                         onClick={() => setCancelId(job.id)}
                         title="Cancelar trabalho"
@@ -181,6 +175,12 @@ export default function FreelancerJobsPage() {
                         onMouseOut={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(239,68,68,0.08)' }}>
                         <Trash2 size={11} /> Cancelar
                       </button>
+                      <Link href="/dashboard/messages" style={{
+                        display: 'flex', alignItems: 'center', gap: 4,
+                        fontSize: 12, color: '#d4783a', textDecoration: 'none', whiteSpace: 'nowrap',
+                      }}>
+                        Chat <ArrowRight size={11} />
+                      </Link>
                     </>
                   )}
                   {job.status === 'delivered' && (
