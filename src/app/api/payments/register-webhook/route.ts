@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { secureCompare } from '@/lib/security'
 import axios from 'axios'
 import https from 'https'
 import fs from 'fs'
@@ -9,8 +10,9 @@ import path from 'path'
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url)
+  const cronSecret = process.env.CRON_SECRET ?? ''
 
-  if (searchParams.get('secret') !== process.env.CRON_SECRET) {
+  if (!cronSecret || !secureCompare(searchParams.get('secret') ?? '', cronSecret)) {
     return NextResponse.json({ error: 'Não autorizado.' }, { status: 401 })
   }
 

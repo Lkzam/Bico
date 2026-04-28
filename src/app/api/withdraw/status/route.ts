@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getAccessToken, getHttpsAgent } from '@/lib/efi'
+import { secureCompare } from '@/lib/security'
 import axios from 'axios'
 
 const SANDBOX  = process.env.EFIBANK_SANDBOX === 'true'
@@ -8,7 +9,8 @@ const BASE_URL = SANDBOX ? 'https://pix-h.api.efipay.com.br' : 'https://pix.api.
 // GET /api/withdraw/status?idEnvio=XXX&secret=SEU_CRON_SECRET
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url)
-  if (searchParams.get('secret') !== process.env.CRON_SECRET)
+  const cronSecret = process.env.CRON_SECRET ?? ''
+  if (!cronSecret || !secureCompare(searchParams.get('secret') ?? '', cronSecret))
     return NextResponse.json({ error: 'Não autorizado.' }, { status: 401 })
 
   const idEnvio = searchParams.get('idEnvio')

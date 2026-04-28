@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { NextResponse } from 'next/server'
 import { getAccessToken, getHttpsAgent } from '@/lib/efi'
+import { isValidPixKey } from '@/lib/security'
 import axios from 'axios'
 
 const SANDBOX  = process.env.EFIBANK_SANDBOX === 'true'
@@ -23,13 +24,16 @@ export async function POST(req: Request) {
   const body = await req.json()
   const { amount, pixKey } = body
 
-  if (!amount || isNaN(amount) || amount <= 0)
+  const parsedAmount = parseFloat(amount)
+  if (!parsedAmount || isNaN(parsedAmount) || parsedAmount <= 0)
     return NextResponse.json({ error: 'Valor inválido.' }, { status: 400 })
   if (!pixKey?.trim())
     return NextResponse.json({ error: 'Chave PIX obrigatória.' }, { status: 400 })
+  if (!isValidPixKey(pixKey))
+    return NextResponse.json({ error: 'Chave PIX inválida. Informe CPF, CNPJ, telefone, e-mail ou chave aleatória.' }, { status: 400 })
 
   const balance = profile.balance ?? 0
-  if (amount > balance)
+  if (parsedAmount > balance)
     return NextResponse.json({ error: 'Saldo insuficiente.' }, { status: 400 })
 
   // Salva chave PIX no perfil se informada
@@ -40,7 +44,7 @@ export async function POST(req: Request) {
   // Deduz saldo do freelancer ANTES de enviar (previne duplo saque)
   const { error: balanceError } = await admin
     .from('profiles')
-    .update({ balance: balance - amount })
+    .update({ balance: balance - parsedAmount })
     .eq('id', profile.id)
     .eq('balance', balance) // optimistic lock
 
@@ -53,7 +57,7 @@ export async function POST(req: Request) {
     .from('withdrawals')
     .insert({
       freelancer_id: profile.id,
-      amount,
+      amount: parsedAmount,
       pix_key: pixKey,
       status: 'processing',
     })
@@ -79,7 +83,7 @@ export async function POST(req: Request) {
 
     // Efí Bank v3: valor como string, pagador = sua chave PIX, favorecido = chave do freelancer
     const pixBody = {
-      valor:    Number(amount).toFixed(2),
+      valor:    parsedAmount.toFixed(2),
       pagador:  {
         chave:        process.env.EFIBANK_PIX_KEY!,
         infoPagador:  'Saque Bico',
@@ -89,8 +93,7 @@ export async function POST(req: Request) {
       },
     }
 
-    console.log('[withdraw] Enviando PIX v3:', JSON.stringify(pixBody))
-
+    // Não loga pixBody — contém a chave PIX da plataforma (dado sensível)
     const { data: pixRes } = await axios.put(
       `${BASE_URL}/v3/gn/pix/${txid}`,
       pixBody,
@@ -102,8 +105,6 @@ export async function POST(req: Request) {
         httpsAgent: agent,
       }
     )
-
-    console.log('[withdraw] PIX enviado:', pixRes)
 
     // Atualiza saque como concluído
     await admin.from('withdrawals').update({
@@ -119,7 +120,7 @@ export async function POST(req: Request) {
 
     // Reverte tudo: saldo e status do saque
     await Promise.all([
-      admin.from('profiles').update({ balance }).eq('id', profile.id),
+      admin.from('profiles').update({ balance }).eq('id', profile.id), // reverte para balance original
       admin.from('withdrawals').update({
         status:        'failed',
         error_message: JSON.stringify(efiError ?? err.message),

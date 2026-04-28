@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin'
+import { secureCompare } from '@/lib/security'
 import { NextResponse } from 'next/server'
 
 // A Efí Bank envia um POST neste endpoint quando o PIX é pago
@@ -9,9 +10,10 @@ export async function POST(req: Request) {
   const webhookToken = process.env.EFIBANK_WEBHOOK_TOKEN
 
   if (webhookToken) {
-    const receivedToken = searchParams.get('token')
-    if (receivedToken !== webhookToken) {
-      console.warn('[webhook] Token inválido recebido:', receivedToken)
+    const receivedToken = searchParams.get('token') ?? ''
+    if (!secureCompare(receivedToken, webhookToken)) {
+      // Não loga o token recebido — pode vazar tokens parcialmente válidos em logs
+      console.warn('[webhook] Token inválido recebido')
       return NextResponse.json({ error: 'Não autorizado.' }, { status: 401 })
     }
   }

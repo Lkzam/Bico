@@ -1,15 +1,17 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { calcFreelancerReceives } from '@/lib/fees'
 import { archiveAndCleanJob } from '@/lib/archiveJob'
+import { secureCompare } from '@/lib/security'
 import { NextResponse } from 'next/server'
 
 const AUTO_APPROVE_HOURS = 5
 
 export async function GET(req: Request) {
-  const authHeader = req.headers.get('authorization')
-  const cronSecret = process.env.CRON_SECRET
+  const authHeader  = req.headers.get('authorization') ?? ''
+  const cronSecret  = process.env.CRON_SECRET ?? ''
+  const bearerToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : ''
 
-  if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+  if (!cronSecret || !secureCompare(bearerToken, cronSecret)) {
     return NextResponse.json({ error: 'Não autorizado.' }, { status: 401 })
   }
 
