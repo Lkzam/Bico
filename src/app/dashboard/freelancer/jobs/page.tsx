@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { formatCurrency, formatDate } from '@/lib/utils'
-import { Briefcase, ArrowRight, Upload, X, FileText, CheckCircle } from 'lucide-react'
+import { Briefcase, ArrowRight, Upload, X, FileText, CheckCircle, Trash2, Loader } from 'lucide-react'
 import Link from 'next/link'
 import { toast, Toaster } from 'sonner'
 
@@ -23,6 +23,8 @@ export default function FreelancerJobsPage() {
   const [profile, setProfile] = useState<any>(null)
   const [loaded, setLoaded] = useState(false)
   const [deliverJobId, setDeliverJobId] = useState<string | null>(null)
+  const [cancelId,     setCancelId]     = useState<string | null>(null)
+  const [cancelling,   setCancelling]   = useState(false)
 
   useEffect(() => {
     async function load() {
@@ -41,7 +43,30 @@ export default function FreelancerJobsPage() {
       setLoaded(true)
     }
     load()
+
+    // Realtime: remove job da lista se a empresa cancelar
+    const channel = supabase
+      .channel('fl-jobs-deletes')
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'jobs' }, (payload) => {
+        const id = (payload.old as any)?.id
+        if (id) setJobs(prev => prev.filter(j => j.id !== id))
+      })
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
   }, [])
+
+  async function confirmCancel() {
+    if (!cancelId) return
+    setCancelling(true)
+    const res  = await fetch(`/api/jobs/${cancelId}/cancel`, { method: 'POST' })
+    const json = await res.json()
+    setCancelling(false)
+    if (!res.ok) { toast.error(json.error ?? 'Erro ao cancelar.'); return }
+    toast.success('Trabalho cancelado.')
+    setJobs(prev => prev.filter(j => j.id !== cancelId))
+    setCancelId(null)
+  }
 
   function refreshJobs() {
     if (!profile) return
@@ -139,6 +164,23 @@ export default function FreelancerJobsPage() {
                       }}>
                         Chat <ArrowRight size={11} />
                       </Link>
+                      <button
+                        onClick={() => setCancelId(job.id)}
+                        title="Cancelar trabalho"
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: 5,
+                          padding: '7px 12px',
+                          background: 'rgba(239,68,68,0.08)',
+                          border: '1px solid rgba(239,68,68,0.3)',
+                          color: '#ef4444', cursor: 'pointer',
+                          fontSize: '0.62rem', fontWeight: 700,
+                          letterSpacing: '0.08em', textTransform: 'uppercase',
+                          fontFamily: 'inherit', transition: 'all 0.15s', whiteSpace: 'nowrap',
+                        }}
+                        onMouseOver={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(239,68,68,0.18)' }}
+                        onMouseOut={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(239,68,68,0.08)' }}>
+                        <Trash2 size={11} /> Cancelar
+                      </button>
                     </>
                   )}
                   {job.status === 'delivered' && (
@@ -152,6 +194,56 @@ export default function FreelancerJobsPage() {
           })
         )}
       </div>
+
+      {/* Modal de confirmação de cancelamento */}
+      {cancelId && (() => {
+        const job = jobs.find(j => j.id === cancelId)
+        if (!job) return null
+        return (
+          <div style={{
+            position: 'fixed', inset: 0, zIndex: 1000,
+            background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(4px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24,
+          }} onClick={e => { if (e.target === e.currentTarget) setCancelId(null) }}>
+            <div style={{ width: '100%', maxWidth: 400, background: '#0f1219', border: '1px solid rgba(239,68,68,0.2)', padding: 32 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+                <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Trash2 size={16} style={{ color: '#ef4444' }} />
+                </div>
+                <div>
+                  <p style={{ fontSize: '0.58rem', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#ef4444', margin: '0 0 2px' }}>Cancelar trabalho</p>
+                  <h3 style={{ fontSize: 16, fontWeight: 700, color: '#fff', margin: 0 }}>{job.title}</h3>
+                </div>
+              </div>
+              <p style={{ fontSize: 13, color: 'rgba(185,190,200,0.6)', margin: '0 0 24px', lineHeight: 1.5 }}>
+                Tem certeza? A empresa será notificada e o trabalho será removido permanentemente. Esta ação não pode ser desfeita.
+              </p>
+              <div style={{ display: 'flex', gap: 10 }}>
+                <button onClick={() => setCancelId(null)} style={{
+                  flex: 1, padding: '11px', background: 'transparent',
+                  border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(185,190,200,0.6)',
+                  cursor: 'pointer', fontSize: '0.65rem', fontWeight: 700,
+                  letterSpacing: '0.1em', textTransform: 'uppercase', fontFamily: 'inherit',
+                }}>
+                  Voltar
+                </button>
+                <button onClick={confirmCancel} disabled={cancelling} style={{
+                  flex: 1, padding: '11px',
+                  background: cancelling ? 'rgba(239,68,68,0.3)' : '#ef4444',
+                  border: 'none', color: '#fff',
+                  cursor: cancelling ? 'not-allowed' : 'pointer',
+                  fontSize: '0.65rem', fontWeight: 700,
+                  letterSpacing: '0.1em', textTransform: 'uppercase', fontFamily: 'inherit',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                }}>
+                  {cancelling ? <Loader size={13} /> : <Trash2 size={13} />}
+                  {cancelling ? 'Cancelando...' : 'Confirmar'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
 
       {/* Modal de entrega */}
       {deliverJobId && deliverJob && (

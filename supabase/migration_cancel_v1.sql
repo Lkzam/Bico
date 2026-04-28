@@ -44,5 +44,11 @@ CREATE POLICY "Usuário atualiza suas notificações" ON notifications
     EXISTS (SELECT 1 FROM profiles WHERE id = profile_id AND user_id = auth.uid())
   );
 
+DROP POLICY IF EXISTS "Usuário deleta suas notificações" ON notifications;
+CREATE POLICY "Usuário deleta suas notificações" ON notifications
+  FOR DELETE USING (
+    EXISTS (SELECT 1 FROM profiles WHERE id = profile_id AND user_id = auth.uid())
+  );
+
 -- 3. Habilitar Realtime para a tabela notifications
 ALTER PUBLICATION supabase_realtime ADD TABLE notifications;

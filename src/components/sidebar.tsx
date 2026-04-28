@@ -408,8 +408,8 @@ export function Sidebar({ profile }: SidebarProps) {
             <div style={{ padding: '10px 16px', borderTop: '1px solid rgba(255,255,255,0.07)', textAlign: 'right' }}>
               <button
                 onClick={async () => {
-                  await supabase.from('notifications').update({ read: true }).eq('profile_id', profile.id)
-                  setNotifList(prev => prev.map(n => ({ ...n, read: true })))
+                  await supabase.from('notifications').delete().eq('profile_id', profile.id)
+                  setNotifList([])
                   setNotifCount(0)
                 }}
                 style={{
