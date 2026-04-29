@@ -24,8 +24,9 @@ export function Sidebar({ profile }: SidebarProps) {
   const [collapsed,   setCollapsed]   = useState(false)
   const [unreadChats, setUnreadChats] = useState(0)
   const [notifCount,  setNotifCount]  = useState(0)
-  const [notifOpen,   setNotifOpen]   = useState(false)
-  const [notifList,   setNotifList]   = useState<any[]>([])
+  const [notifOpen,      setNotifOpen]      = useState(false)
+  const [notifList,      setNotifList]      = useState<any[]>([])
+  const [expandedNotif,  setExpandedNotif]  = useState<any | null>(null)
 
   const chatIdsRef = useRef<string[]>([])
 
@@ -403,6 +404,72 @@ export function Sidebar({ profile }: SidebarProps) {
         )}
       </div>
 
+      {/* ── Popup de justificativa de cancelamento ── */}
+      {expandedNotif && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 3000,
+          background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(4px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24,
+        }} onClick={e => { if (e.target === e.currentTarget) setExpandedNotif(null) }}>
+          <div style={{
+            width: '100%', maxWidth: 420, background: '#0f1219',
+            border: '1px solid rgba(239,68,68,0.25)', padding: 28,
+          }}>
+            {/* Header */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <AlertCircle size={14} style={{ color: '#ef4444' }} />
+                </div>
+                <div>
+                  <p style={{ fontSize: '0.58rem', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#ef4444', margin: 0 }}>Trabalho cancelado</p>
+                  <p style={{ fontSize: 13, fontWeight: 700, color: '#fff', margin: 0 }}>
+                    {expandedNotif.metadata?.job_title ?? expandedNotif.title}
+                  </p>
+                </div>
+              </div>
+              <button onClick={() => setExpandedNotif(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(185,190,200,0.4)', padding: 4, display: 'flex' }}>
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Quem cancelou */}
+            {expandedNotif.metadata?.cancelled_by_name && (
+              <p style={{ fontSize: 12, color: 'rgba(185,190,200,0.5)', margin: '0 0 16px' }}>
+                Cancelado pelo {expandedNotif.metadata.cancelled_by === 'company' ? 'empresa' : 'freelancer'}{' '}
+                <strong style={{ color: 'rgba(185,190,200,0.8)' }}>{expandedNotif.metadata.cancelled_by_name}</strong>
+              </p>
+            )}
+
+            {/* Motivo */}
+            <div style={{ padding: '14px 16px', background: 'rgba(239,68,68,0.05)', border: '1px solid rgba(239,68,68,0.15)' }}>
+              <p style={{ fontSize: '0.58rem', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'rgba(239,68,68,0.6)', margin: '0 0 8px' }}>
+                Motivo do cancelamento
+              </p>
+              <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.75)', margin: 0, lineHeight: 1.6 }}>
+                {expandedNotif.metadata?.cancel_reason ?? 'Nenhum motivo informado.'}
+              </p>
+            </div>
+
+            <div style={{ marginTop: 16, textAlign: 'right' }}>
+              <p style={{ fontSize: 10, color: 'rgba(185,190,200,0.3)', margin: 0 }}>
+                {new Date(expandedNotif.created_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+              </p>
+            </div>
+
+            <button onClick={() => setExpandedNotif(null)} style={{
+              marginTop: 20, width: '100%', padding: '10px',
+              background: 'transparent', border: '1px solid rgba(255,255,255,0.12)',
+              color: 'rgba(185,190,200,0.6)', cursor: 'pointer',
+              fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase',
+              fontFamily: 'inherit',
+            }}>
+              Fechar
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* ── Painel de notificações ── */}
       {notifOpen && (
         <div style={{
@@ -443,31 +510,49 @@ export function Sidebar({ profile }: SidebarProps) {
                 <p style={{ fontSize: 13, color: 'rgba(185,190,200,0.35)', margin: 0 }}>Nenhuma notificação ainda</p>
               </div>
             ) : (
-              notifList.map((n: any) => (
-                <div key={n.id} style={{
-                  padding: '13px 16px',
-                  borderBottom: '1px solid rgba(255,255,255,0.05)',
-                  background: n.read ? 'transparent' : 'rgba(217,78,24,0.05)',
-                  display: 'flex', gap: 10, alignItems: 'flex-start',
-                }}>
-                  <div style={{
-                    width: 28, height: 28, borderRadius: '50%', flexShrink: 0,
-                    background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.25)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: 1,
+              notifList.map((n: any) => {
+                const hasCancelReason = n.metadata?.cancel_reason
+                return (
+                  <div key={n.id} style={{
+                    padding: '13px 16px',
+                    borderBottom: '1px solid rgba(255,255,255,0.05)',
+                    background: n.read ? 'transparent' : 'rgba(217,78,24,0.05)',
+                    display: 'flex', gap: 10, alignItems: 'flex-start',
                   }}>
-                    <AlertCircle size={13} style={{ color: '#ef4444' }} />
+                    <div style={{
+                      width: 28, height: 28, borderRadius: '50%', flexShrink: 0,
+                      background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.25)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: 1,
+                    }}>
+                      <AlertCircle size={13} style={{ color: '#ef4444' }} />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ fontSize: 12, color: n.read ? 'rgba(185,190,200,0.55)' : '#fff', margin: '0 0 3px', lineHeight: 1.4 }}>{n.body}</p>
+                      <p style={{ fontSize: 10, color: 'rgba(185,190,200,0.3)', margin: hasCancelReason ? '0 0 6px' : 0 }}>
+                        {new Date(n.created_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                      </p>
+                      {hasCancelReason && (
+                        <button
+                          onClick={() => setExpandedNotif(n)}
+                          style={{
+                            background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)',
+                            color: '#ef4444', fontSize: 10, fontWeight: 700, letterSpacing: '0.08em',
+                            textTransform: 'uppercase', padding: '3px 8px', cursor: 'pointer',
+                            fontFamily: 'inherit', transition: 'all 0.15s',
+                          }}
+                          onMouseOver={e => (e.currentTarget.style.background = 'rgba(239,68,68,0.2)')}
+                          onMouseOut={e => (e.currentTarget.style.background = 'rgba(239,68,68,0.1)')}
+                        >
+                          Ver motivo
+                        </button>
+                      )}
+                    </div>
+                    {!n.read && (
+                      <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#d94e18', flexShrink: 0, marginTop: 4, boxShadow: '0 0 5px rgba(217,78,24,0.7)' }} />
+                    )}
                   </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ fontSize: 12, color: n.read ? 'rgba(185,190,200,0.55)' : '#fff', margin: '0 0 3px', lineHeight: 1.4 }}>{n.body}</p>
-                    <p style={{ fontSize: 10, color: 'rgba(185,190,200,0.3)', margin: 0 }}>
-                      {new Date(n.created_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                    </p>
-                  </div>
-                  {!n.read && (
-                    <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#d94e18', flexShrink: 0, marginTop: 4, boxShadow: '0 0 5px rgba(217,78,24,0.7)' }} />
-                  )}
-                </div>
-              ))
+                )
+              })
             )}
           </div>
 

@@ -29,3 +29,12 @@ export function calculateFee(value: number, feePercent = 0.15): number {
 export function calculateFreelancerAmount(value: number, feePercent = 0.15): number {
   return parseFloat((value - calculateFee(value, feePercent)).toFixed(2))
 }
+
+export function formatDeadline(hours: number | null | undefined): string | null {
+  if (!hours) return null
+  if (hours < 24) return `${hours}h de prazo`
+  const days = Math.floor(hours / 24)
+  const rem = hours % 24
+  if (rem === 0) return `${days}d de prazo`
+  return `${days}d ${rem}h de prazo`
+}

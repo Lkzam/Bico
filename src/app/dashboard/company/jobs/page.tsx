@@ -8,8 +8,10 @@ import {
   Briefcase, ArrowRight, Plus, X, CreditCard, FileText, FileImage,
   FileArchive, FileCode, File, Lock, Copy, CheckCircle, Loader,
   Trash2, Download, ThumbsUp, AlertTriangle, ShieldCheck, Clock,
+  Pencil, Wifi, MapPin,
 } from 'lucide-react'
 import { calcCompanyTotal, calcFreelancerReceives, PLATFORM_FEE_COMPANY, PLATFORM_FEE_FREELANCER } from '@/lib/fees'
+import { formatDeadline } from '@/lib/utils'
 import Link from 'next/link'
 import { toast, Toaster } from 'sonner'
 import { ReviewModal } from '@/components/ReviewModal'
@@ -32,7 +34,11 @@ export default function CompanyJobsPage() {
   const [loaded, setLoaded] = useState(false)
   const [payJobId, setPayJobId] = useState<string | null>(null)
   const [cancelJobId, setCancelJobId] = useState<string | null>(null)
+  const [cancelReason, setCancelReason] = useState('')
   const [cancelling, setCancelling] = useState(false)
+  const [editJobId, setEditJobId] = useState<string | null>(null)
+  const [editForm, setEditForm] = useState({ title: '', description: '', deadline_hours: '', deadlineUnit: 'hours' as 'hours' | 'days', address: '', work_type: 'remote' as 'remote' | 'presential' })
+  const [editSaving, setEditSaving] = useState(false)
   const [approveJobId, setApproveJobId] = useState<string | null>(null)
   const [disputeJobId, setDisputeJobId] = useState<string | null>(null)
   const [approving, setApproving] = useState(false)
@@ -105,13 +111,65 @@ export default function CompanyJobsPage() {
   async function confirmCancel() {
     if (!cancelJobId) return
     setCancelling(true)
-    const res = await fetch(`/api/jobs/${cancelJobId}/cancel`, { method: 'POST' })
+    const res = await fetch(`/api/jobs/${cancelJobId}/cancel`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reason: cancelReason }),
+    })
     const json = await res.json()
     setCancelling(false)
     if (!res.ok) { toast.error(json.error ?? 'Erro ao cancelar.'); return }
     toast.success('Trabalho cancelado e removido.')
     setJobs(prev => prev.filter(j => j.id !== cancelJobId))
     setCancelJobId(null)
+    setCancelReason('')
+  }
+
+  function openEditModal(job: any) {
+    const hours = job.deadline_hours ?? ''
+    // Tenta exibir em dias se múltiplo de 24 e >= 24
+    const showDays = hours && hours >= 24 && hours % 24 === 0
+    setEditForm({
+      title:         job.title,
+      description:   job.description ?? '',
+      deadline_hours: showDays ? String(hours / 24) : String(hours || ''),
+      deadlineUnit:  showDays ? 'days' : 'hours',
+      address:       job.address ?? '',
+      work_type:     job.work_type ?? 'remote',
+    })
+    setEditJobId(job.id)
+  }
+
+  async function confirmEdit() {
+    if (!editJobId) return
+    setEditSaving(true)
+    const deadline = editForm.deadline_hours
+      ? (editForm.deadlineUnit === 'days' ? parseInt(editForm.deadline_hours) * 24 : parseInt(editForm.deadline_hours))
+      : null
+    const res = await fetch(`/api/jobs/${editJobId}/edit`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        title:         editForm.title,
+        description:   editForm.description,
+        deadline_hours: deadline,
+        work_type:     editForm.work_type,
+        address:       editForm.address,
+      }),
+    })
+    const json = await res.json()
+    setEditSaving(false)
+    if (!res.ok) { toast.error(json.error ?? 'Erro ao salvar.'); return }
+    toast.success('Trabalho atualizado!')
+    setJobs(prev => prev.map(j => j.id === editJobId ? {
+      ...j,
+      title:         editForm.title,
+      description:   editForm.description,
+      deadline_hours: deadline,
+      work_type:     editForm.work_type,
+      address:       editForm.work_type === 'presential' ? editForm.address : null,
+    } : j))
+    setEditJobId(null)
   }
 
   async function confirmApprove() {
@@ -254,7 +312,7 @@ export default function CompanyJobsPage() {
                     <p style={{ fontSize: 12, color: 'rgba(185,190,200,0.4)', margin: 0 }}>
                       {formatDate(job.created_at)}
                       {job.profiles?.name && ` · Freelancer: ${job.profiles.name}`}
-                      {job.deadline_hours && ` · ${job.deadline_hours}h de prazo`}
+                      {formatDeadline(job.deadline_hours) && ` · ${formatDeadline(job.deadline_hours)}`}
                     </p>
                   </div>
 
@@ -289,6 +347,27 @@ export default function CompanyJobsPage() {
                         onMouseOver={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(34,197,94,0.22)' }}
                         onMouseOut={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(34,197,94,0.12)' }}>
                         <CreditCard size={11} /> Pagar
+                      </button>
+                    )}
+
+                    {/* Editar (aberto ou em andamento) */}
+                    {['open', 'in_progress'].includes(job.status) && (
+                      <button
+                        onClick={() => openEditModal(job)}
+                        title="Editar trabalho"
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: 5,
+                          padding: '7px 12px',
+                          background: 'rgba(59,130,246,0.08)',
+                          border: '1px solid rgba(59,130,246,0.3)',
+                          color: '#60a5fa', cursor: 'pointer',
+                          fontSize: '0.62rem', fontWeight: 700,
+                          letterSpacing: '0.08em', textTransform: 'uppercase',
+                          fontFamily: 'inherit', transition: 'all 0.15s', whiteSpace: 'nowrap',
+                        }}
+                        onMouseOver={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(59,130,246,0.18)' }}
+                        onMouseOut={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(59,130,246,0.08)' }}>
+                        <Pencil size={11} /> Editar
                       </button>
                     )}
 
@@ -452,9 +531,9 @@ export default function CompanyJobsPage() {
           position: 'fixed', inset: 0, zIndex: 1000,
           background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(4px)',
           display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24,
-        }} onClick={e => { if (e.target === e.currentTarget) setCancelJobId(null) }}>
+        }} onClick={e => { if (e.target === e.currentTarget) { setCancelJobId(null); setCancelReason('') } }}>
           <div style={{
-            width: '100%', maxWidth: 400, background: '#0f1219',
+            width: '100%', maxWidth: 440, background: '#0f1219',
             border: '1px solid rgba(239,68,68,0.2)', padding: 32,
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
@@ -466,11 +545,30 @@ export default function CompanyJobsPage() {
                 <h3 style={{ fontSize: 16, fontWeight: 700, color: '#fff', margin: 0 }}>{cancelJob.title}</h3>
               </div>
             </div>
-            <p style={{ fontSize: 13, color: 'rgba(185,190,200,0.6)', margin: '0 0 24px', lineHeight: 1.5 }}>
-              Tem certeza que deseja cancelar este trabalho? Esta ação não pode ser desfeita.
+            <p style={{ fontSize: 13, color: 'rgba(185,190,200,0.6)', margin: '0 0 16px', lineHeight: 1.5 }}>
+              Esta ação não pode ser desfeita. O freelancer será notificado com o motivo do cancelamento.
             </p>
+            <label style={{ display: 'block', fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'rgba(185,190,200,0.55)', marginBottom: 8 }}>
+              Motivo do cancelamento <span style={{ color: '#ef4444' }}>*</span>
+            </label>
+            <textarea
+              value={cancelReason}
+              onChange={e => setCancelReason(e.target.value)}
+              placeholder="Ex: Projeto foi pausado internamente, não precisamos mais do serviço..."
+              rows={3}
+              style={{
+                width: '100%', boxSizing: 'border-box',
+                padding: '12px 14px', marginBottom: 20,
+                background: 'rgba(255,255,255,0.04)',
+                border: '1px solid rgba(255,255,255,0.12)',
+                color: '#fff', fontSize: 13, lineHeight: 1.5,
+                fontFamily: 'inherit', resize: 'vertical', outline: 'none',
+              }}
+              onFocus={e => (e.target.style.borderColor = '#ef4444')}
+              onBlur={e => (e.target.style.borderColor = 'rgba(255,255,255,0.12)')}
+            />
             <div style={{ display: 'flex', gap: 10 }}>
-              <button onClick={() => setCancelJobId(null)} style={{
+              <button onClick={() => { setCancelJobId(null); setCancelReason('') }} style={{
                 flex: 1, padding: '11px', background: 'transparent',
                 border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(185,190,200,0.6)',
                 cursor: 'pointer', fontSize: '0.65rem', fontWeight: 700,
@@ -478,11 +576,11 @@ export default function CompanyJobsPage() {
               }}>
                 Voltar
               </button>
-              <button onClick={confirmCancel} disabled={cancelling} style={{
+              <button onClick={confirmCancel} disabled={cancelling || !cancelReason.trim()} style={{
                 flex: 1, padding: '11px',
-                background: cancelling ? 'rgba(239,68,68,0.3)' : '#ef4444',
-                border: 'none', color: '#fff',
-                cursor: cancelling ? 'not-allowed' : 'pointer',
+                background: cancelling || !cancelReason.trim() ? 'rgba(239,68,68,0.25)' : '#ef4444',
+                border: 'none', color: cancelling || !cancelReason.trim() ? 'rgba(255,255,255,0.3)' : '#fff',
+                cursor: cancelling || !cancelReason.trim() ? 'not-allowed' : 'pointer',
                 fontSize: '0.65rem', fontWeight: 700,
                 letterSpacing: '0.1em', textTransform: 'uppercase', fontFamily: 'inherit',
               }}>
@@ -492,6 +590,197 @@ export default function CompanyJobsPage() {
           </div>
         </div>
       )}
+
+      {/* Modal edição de trabalho */}
+      {editJobId && (() => {
+        const editJob = jobs.find(j => j.id === editJobId)
+        if (!editJob) return null
+        const inputStyle = {
+          width: '100%', boxSizing: 'border-box' as const,
+          padding: '12px 14px',
+          background: 'rgba(255,255,255,0.04)',
+          border: '1px solid rgba(255,255,255,0.12)',
+          color: '#fff', fontSize: 13, lineHeight: 1.5,
+          fontFamily: 'inherit', outline: 'none',
+          transition: 'border-color 0.2s',
+        }
+        const labelStyle = {
+          display: 'block' as const, fontSize: '0.62rem', fontWeight: 700,
+          letterSpacing: '0.14em', textTransform: 'uppercase' as const,
+          color: 'rgba(185,190,200,0.55)', marginBottom: 8,
+        }
+        return (
+          <div style={{
+            position: 'fixed', inset: 0, zIndex: 1000,
+            background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(4px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24,
+            overflowY: 'auto',
+          }} onClick={e => { if (e.target === e.currentTarget) setEditJobId(null) }}>
+            <div style={{
+              width: '100%', maxWidth: 520, background: '#0f1219',
+              border: '1px solid rgba(59,130,246,0.2)', padding: 32,
+            }}>
+              {/* Header */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'rgba(59,130,246,0.12)', border: '1px solid rgba(59,130,246,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Pencil size={16} style={{ color: '#60a5fa' }} />
+                  </div>
+                  <div>
+                    <p style={{ fontSize: '0.58rem', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#60a5fa', margin: '0 0 2px' }}>Editar trabalho</p>
+                    <h3 style={{ fontSize: 16, fontWeight: 700, color: '#fff', margin: 0 }}>{editJob.title}</h3>
+                  </div>
+                </div>
+                <button onClick={() => setEditJobId(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(185,190,200,0.4)', padding: 4, display: 'flex' }}>
+                  <X size={16} />
+                </button>
+              </div>
+
+              {/* Aviso: valor não editável */}
+              <div style={{ padding: '10px 14px', marginBottom: 20, background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.2)', display: 'flex', alignItems: 'center', gap: 10 }}>
+                <AlertTriangle size={13} style={{ color: '#f59e0b', flexShrink: 0 }} />
+                <p style={{ fontSize: 12, color: 'rgba(185,190,200,0.6)', margin: 0 }}>
+                  O <strong style={{ color: '#f59e0b' }}>valor do trabalho não pode ser alterado</strong>. Para mudar o valor, cancele e publique um novo trabalho.
+                </p>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+                {/* Tipo de trabalho */}
+                <div>
+                  <label style={labelStyle}>Tipo de trabalho</label>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                    {([
+                      { value: 'remote',     label: 'Remoto',     icon: Wifi },
+                      { value: 'presential', label: 'Presencial', icon: MapPin },
+                    ] as { value: 'remote' | 'presential'; label: string; icon: any }[]).map(opt => {
+                      const active = editForm.work_type === opt.value
+                      return (
+                        <button key={opt.value} type="button"
+                          onClick={() => setEditForm(f => ({ ...f, work_type: opt.value }))}
+                          style={{
+                            display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', textAlign: 'left',
+                            background: active ? 'rgba(59,130,246,0.1)' : 'rgba(255,255,255,0.03)',
+                            border: `1px solid ${active ? '#60a5fa' : 'rgba(255,255,255,0.1)'}`,
+                            cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s',
+                          }}>
+                          <opt.icon size={14} color={active ? '#60a5fa' : 'rgba(185,190,200,0.4)'} />
+                          <span style={{ fontSize: 13, fontWeight: 600, color: active ? '#fff' : 'rgba(185,190,200,0.6)' }}>{opt.label}</span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                {/* Endereço (presencial) */}
+                {editForm.work_type === 'presential' && (
+                  <div>
+                    <label style={{ ...labelStyle, color: '#d4783a' }}>
+                      <MapPin size={10} style={{ display: 'inline', marginRight: 4, verticalAlign: 'middle' }} />
+                      Endereço
+                    </label>
+                    <input
+                      value={editForm.address}
+                      onChange={e => setEditForm(f => ({ ...f, address: e.target.value }))}
+                      placeholder="Ex: Rua das Flores, 123 — Pinheiros, SP"
+                      style={inputStyle}
+                      onFocus={e => (e.target.style.borderColor = '#d94e18')}
+                      onBlur={e => (e.target.style.borderColor = 'rgba(255,255,255,0.12)')}
+                    />
+                  </div>
+                )}
+
+                {/* Título */}
+                <div>
+                  <label style={labelStyle}>Título</label>
+                  <input
+                    value={editForm.title}
+                    onChange={e => setEditForm(f => ({ ...f, title: e.target.value }))}
+                    placeholder="Título do trabalho"
+                    style={inputStyle}
+                    onFocus={e => (e.target.style.borderColor = '#60a5fa')}
+                    onBlur={e => (e.target.style.borderColor = 'rgba(255,255,255,0.12)')}
+                  />
+                </div>
+
+                {/* Descrição */}
+                <div>
+                  <label style={labelStyle}>Descrição</label>
+                  <textarea
+                    value={editForm.description}
+                    onChange={e => setEditForm(f => ({ ...f, description: e.target.value }))}
+                    rows={4}
+                    placeholder="Descreva o que precisa ser feito..."
+                    style={{ ...inputStyle, resize: 'vertical' as const, lineHeight: 1.6 }}
+                    onFocus={e => (e.target.style.borderColor = '#60a5fa')}
+                    onBlur={e => (e.target.style.borderColor = 'rgba(255,255,255,0.12)')}
+                  />
+                </div>
+
+                {/* Prazo */}
+                <div>
+                  <label style={labelStyle}>
+                    <Clock size={10} style={{ display: 'inline', marginRight: 4, verticalAlign: 'middle' }} />
+                    Prazo
+                  </label>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 0 }}>
+                    <input
+                      type="number" min="1"
+                      value={editForm.deadline_hours}
+                      onChange={e => setEditForm(f => ({ ...f, deadline_hours: e.target.value }))}
+                      placeholder={editForm.deadlineUnit === 'hours' ? '48' : '3'}
+                      style={{ ...inputStyle, borderRight: 'none' }}
+                      onFocus={e => (e.target.style.borderColor = '#60a5fa')}
+                      onBlur={e => (e.target.style.borderColor = 'rgba(255,255,255,0.12)')}
+                    />
+                    <div style={{ display: 'flex', border: '1px solid rgba(255,255,255,0.12)' }}>
+                      {(['hours', 'days'] as const).map(unit => (
+                        <button key={unit} type="button"
+                          onClick={() => setEditForm(f => ({ ...f, deadlineUnit: unit }))}
+                          style={{
+                            padding: '0 11px',
+                            background: editForm.deadlineUnit === unit ? 'rgba(59,130,246,0.2)' : 'rgba(255,255,255,0.03)',
+                            border: 'none',
+                            borderLeft: unit === 'days' ? '1px solid rgba(255,255,255,0.12)' : 'none',
+                            color: editForm.deadlineUnit === unit ? '#60a5fa' : 'rgba(185,190,200,0.45)',
+                            fontSize: 11, fontWeight: 700, cursor: 'pointer',
+                            fontFamily: 'inherit', letterSpacing: '0.06em',
+                            transition: 'all 0.15s', whiteSpace: 'nowrap',
+                          }}>
+                          {unit === 'hours' ? 'h' : 'd'}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: 10, marginTop: 24 }}>
+                <button onClick={() => setEditJobId(null)} style={{
+                  flex: 1, padding: '11px', background: 'transparent',
+                  border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(185,190,200,0.6)',
+                  cursor: 'pointer', fontSize: '0.65rem', fontWeight: 700,
+                  letterSpacing: '0.1em', textTransform: 'uppercase', fontFamily: 'inherit',
+                }}>
+                  Cancelar
+                </button>
+                <button onClick={confirmEdit} disabled={editSaving || !editForm.title.trim() || !editForm.description.trim()} style={{
+                  flex: 2, padding: '11px',
+                  background: editSaving || !editForm.title.trim() || !editForm.description.trim() ? 'rgba(59,130,246,0.2)' : '#3b82f6',
+                  border: 'none', color: editSaving || !editForm.title.trim() || !editForm.description.trim() ? 'rgba(255,255,255,0.3)' : '#fff',
+                  cursor: editSaving || !editForm.title.trim() || !editForm.description.trim() ? 'not-allowed' : 'pointer',
+                  fontSize: '0.65rem', fontWeight: 700,
+                  letterSpacing: '0.1em', textTransform: 'uppercase', fontFamily: 'inherit',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                }}>
+                  {editSaving ? <Loader size={13} /> : <Pencil size={13} />}
+                  {editSaving ? 'Salvando...' : 'Salvar alterações'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
 
       {/* Modal aprovar entrega */}
       {approveJobId && approveJob && (

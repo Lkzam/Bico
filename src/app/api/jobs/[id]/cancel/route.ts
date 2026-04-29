@@ -3,7 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { NextResponse } from 'next/server'
 
 export async function POST(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id: jobId } = await params
@@ -17,6 +17,13 @@ export async function POST(
     .from('profiles').select('id, role, name').eq('user_id', user.id).single()
   if (!profile || !['company', 'freelancer'].includes(profile.role))
     return NextResponse.json({ error: 'Perfil não encontrado.' }, { status: 403 })
+
+  // Lê o motivo do cancelamento
+  let cancelReason = ''
+  try {
+    const body = await req.json()
+    cancelReason = (body.reason ?? '').trim()
+  } catch { /* body vazio, sem motivo */ }
 
   // Busca o job
   const { data: job } = await admin
@@ -54,24 +61,35 @@ export async function POST(
     archivedMessages = msgs ?? []
   }
 
-  // Salva log do cancelamento com a conversa arquivada
+  // Salva log do cancelamento com a conversa arquivada e o motivo
   await admin.from('cancelled_job_logs').insert({
-    original_job_id:  jobId,
-    job_title:        job.title,
-    job_value:        job.value,
-    company_id:       job.company_id,
-    freelancer_id:    job.freelancer_id,
-    cancelled_by:     profile.role,
+    original_job_id:   jobId,
+    job_title:         job.title,
+    job_value:         job.value,
+    company_id:        job.company_id,
+    freelancer_id:     job.freelancer_id,
+    cancelled_by:      profile.role,
     cancelled_by_name: profile.name,
-    messages:         archivedMessages,
+    cancel_reason:     cancelReason || null,
+    messages:          archivedMessages,
   })
 
   // Notifica o outro lado em tempo real
   if (notifyProfileId) {
+    const notifBody = cancelReason
+      ? `O trabalho "${job.title}" foi cancelado pelo ${cancellerLabel} ${profile.name}.`
+      : `O trabalho "${job.title}" foi cancelado pelo ${cancellerLabel} ${profile.name}.`
+
     await admin.from('notifications').insert({
       profile_id: notifyProfileId,
       title:      'Trabalho cancelado',
-      body:       `O Job "${job.title}" foi cancelado por parte do ${cancellerLabel} ${profile.name}.`,
+      body:       notifBody,
+      metadata:   {
+        cancel_reason:      cancelReason || null,
+        cancelled_by:       profile.role,
+        cancelled_by_name:  profile.name,
+        job_title:          job.title,
+      },
     })
   }
 

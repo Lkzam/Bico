@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-import { formatCurrency, formatDate } from '@/lib/utils'
+import { formatCurrency, formatDate, formatDeadline } from '@/lib/utils'
 import { Briefcase, ArrowRight, Upload, X, FileText, CheckCircle, Trash2, Loader } from 'lucide-react'
 import Link from 'next/link'
 import { toast, Toaster } from 'sonner'
@@ -24,6 +24,7 @@ export default function FreelancerJobsPage() {
   const [loaded, setLoaded] = useState(false)
   const [deliverJobId, setDeliverJobId] = useState<string | null>(null)
   const [cancelId,     setCancelId]     = useState<string | null>(null)
+  const [cancelReason, setCancelReason] = useState('')
   const [cancelling,   setCancelling]   = useState(false)
 
   useEffect(() => {
@@ -59,13 +60,18 @@ export default function FreelancerJobsPage() {
   async function confirmCancel() {
     if (!cancelId) return
     setCancelling(true)
-    const res  = await fetch(`/api/jobs/${cancelId}/cancel`, { method: 'POST' })
+    const res  = await fetch(`/api/jobs/${cancelId}/cancel`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reason: cancelReason }),
+    })
     const json = await res.json()
     setCancelling(false)
     if (!res.ok) { toast.error(json.error ?? 'Erro ao cancelar.'); return }
     toast.success('Trabalho cancelado.')
     setJobs(prev => prev.filter(j => j.id !== cancelId))
     setCancelId(null)
+    setCancelReason('')
   }
 
   function refreshJobs() {
@@ -123,7 +129,7 @@ export default function FreelancerJobsPage() {
                   <p style={{ fontSize: 15, fontWeight: 600, color: '#fff', margin: '0 0 4px' }}>{job.title}</p>
                   <p style={{ fontSize: 12, color: 'rgba(185,190,200,0.4)', margin: 0 }}>
                     {job.profiles?.name} · {formatDate(job.created_at)}
-                    {job.deadline_hours && ` · ${job.deadline_hours}h de prazo`}
+                    {formatDeadline(job.deadline_hours) && ` · ${formatDeadline(job.deadline_hours)}`}
                   </p>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginLeft: 16, flexShrink: 0 }}>
@@ -204,8 +210,8 @@ export default function FreelancerJobsPage() {
             position: 'fixed', inset: 0, zIndex: 1000,
             background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(4px)',
             display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24,
-          }} onClick={e => { if (e.target === e.currentTarget) setCancelId(null) }}>
-            <div style={{ width: '100%', maxWidth: 400, background: '#0f1219', border: '1px solid rgba(239,68,68,0.2)', padding: 32 }}>
+          }} onClick={e => { if (e.target === e.currentTarget) { setCancelId(null); setCancelReason('') } }}>
+            <div style={{ width: '100%', maxWidth: 440, background: '#0f1219', border: '1px solid rgba(239,68,68,0.2)', padding: 32 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
                 <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <Trash2 size={16} style={{ color: '#ef4444' }} />
@@ -215,11 +221,30 @@ export default function FreelancerJobsPage() {
                   <h3 style={{ fontSize: 16, fontWeight: 700, color: '#fff', margin: 0 }}>{job.title}</h3>
                 </div>
               </div>
-              <p style={{ fontSize: 13, color: 'rgba(185,190,200,0.6)', margin: '0 0 24px', lineHeight: 1.5 }}>
-                Tem certeza? A empresa será notificada e o trabalho será removido permanentemente. Esta ação não pode ser desfeita.
+              <p style={{ fontSize: 13, color: 'rgba(185,190,200,0.6)', margin: '0 0 16px', lineHeight: 1.5 }}>
+                A empresa será notificada com o motivo do cancelamento. Esta ação não pode ser desfeita.
               </p>
+              <label style={{ display: 'block', fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'rgba(185,190,200,0.55)', marginBottom: 8 }}>
+                Motivo do cancelamento <span style={{ color: '#ef4444' }}>*</span>
+              </label>
+              <textarea
+                value={cancelReason}
+                onChange={e => setCancelReason(e.target.value)}
+                placeholder="Ex: Consegui outro projeto, não tenho mais disponibilidade..."
+                rows={3}
+                style={{
+                  width: '100%', boxSizing: 'border-box' as const,
+                  padding: '12px 14px', marginBottom: 20,
+                  background: 'rgba(255,255,255,0.04)',
+                  border: '1px solid rgba(255,255,255,0.12)',
+                  color: '#fff', fontSize: 13, lineHeight: 1.5,
+                  fontFamily: 'inherit', resize: 'vertical' as const, outline: 'none',
+                }}
+                onFocus={e => (e.target.style.borderColor = '#ef4444')}
+                onBlur={e => (e.target.style.borderColor = 'rgba(255,255,255,0.12)')}
+              />
               <div style={{ display: 'flex', gap: 10 }}>
-                <button onClick={() => setCancelId(null)} style={{
+                <button onClick={() => { setCancelId(null); setCancelReason('') }} style={{
                   flex: 1, padding: '11px', background: 'transparent',
                   border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(185,190,200,0.6)',
                   cursor: 'pointer', fontSize: '0.65rem', fontWeight: 700,
@@ -227,11 +252,11 @@ export default function FreelancerJobsPage() {
                 }}>
                   Voltar
                 </button>
-                <button onClick={confirmCancel} disabled={cancelling} style={{
+                <button onClick={confirmCancel} disabled={cancelling || !cancelReason.trim()} style={{
                   flex: 1, padding: '11px',
-                  background: cancelling ? 'rgba(239,68,68,0.3)' : '#ef4444',
-                  border: 'none', color: '#fff',
-                  cursor: cancelling ? 'not-allowed' : 'pointer',
+                  background: cancelling || !cancelReason.trim() ? 'rgba(239,68,68,0.25)' : '#ef4444',
+                  border: 'none', color: cancelling || !cancelReason.trim() ? 'rgba(255,255,255,0.3)' : '#fff',
+                  cursor: cancelling || !cancelReason.trim() ? 'not-allowed' : 'pointer',
                   fontSize: '0.65rem', fontWeight: 700,
                   letterSpacing: '0.1em', textTransform: 'uppercase', fontFamily: 'inherit',
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,

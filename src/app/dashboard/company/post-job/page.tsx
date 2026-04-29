@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { toast, Toaster } from 'sonner'
-import { Check, ArrowRight, Wifi, MapPin } from 'lucide-react'
+import { Check, ArrowRight, Wifi, MapPin, Clock } from 'lucide-react'
 
 export default function PostJobPage() {
   const router = useRouter()
@@ -13,6 +13,7 @@ export default function PostJobPage() {
   const [allTags, setAllTags] = useState<any[]>([])
   const [selectedTagIds, setSelectedTagIds] = useState<Set<string>>(new Set())
   const [workType, setWorkType] = useState<'remote' | 'presential'>('remote')
+  const [deadlineUnit, setDeadlineUnit] = useState<'hours' | 'days'>('hours')
   const [form, setForm] = useState({ title: '', description: '', value: '', deadline_hours: '', address: '' })
 
   useEffect(() => {
@@ -48,7 +49,9 @@ export default function PostJobPage() {
         title: form.title,
         description: form.description,
         value: parseFloat(form.value),
-        deadline_hours: form.deadline_hours ? parseInt(form.deadline_hours) : null,
+        deadline_hours: form.deadline_hours
+          ? (deadlineUnit === 'days' ? parseInt(form.deadline_hours) * 24 : parseInt(form.deadline_hours))
+          : null,
         work_type: workType,
         address: workType === 'presential' ? form.address.trim() : null,
         status: 'open',
@@ -217,15 +220,45 @@ export default function PostJobPage() {
                   />
                 </div>
                 <div>
-                  <label style={labelStyle}>Prazo (horas)</label>
-                  <input
-                    type="number" min="1" placeholder="48"
-                    value={form.deadline_hours}
-                    onChange={e => setForm(f => ({ ...f, deadline_hours: e.target.value }))}
-                    style={inputStyle}
-                    onFocus={e => (e.target.style.borderColor = '#d94e18')}
-                    onBlur={e => (e.target.style.borderColor = 'rgba(255,255,255,0.1)')}
-                  />
+                  <label style={labelStyle}>
+                    <Clock size={10} style={{ display: 'inline', marginRight: 5, verticalAlign: 'middle' }} />
+                    Prazo
+                  </label>
+                  {/* Toggle horas / dias */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 0 }}>
+                    <input
+                      type="number" min="1"
+                      placeholder={deadlineUnit === 'hours' ? '48' : '3'}
+                      value={form.deadline_hours}
+                      onChange={e => setForm(f => ({ ...f, deadline_hours: e.target.value }))}
+                      style={{ ...inputStyle, borderRight: 'none' }}
+                      onFocus={e => (e.target.style.borderColor = '#d94e18')}
+                      onBlur={e => (e.target.style.borderColor = 'rgba(255,255,255,0.1)')}
+                    />
+                    <div style={{ display: 'flex', border: '1px solid rgba(255,255,255,0.1)' }}>
+                      {(['hours', 'days'] as const).map(unit => (
+                        <button
+                          key={unit}
+                          type="button"
+                          onClick={() => setDeadlineUnit(unit)}
+                          style={{
+                            padding: '0 11px',
+                            background: deadlineUnit === unit ? 'rgba(217,78,24,0.2)' : 'rgba(255,255,255,0.03)',
+                            border: 'none',
+                            borderLeft: unit === 'days' ? '1px solid rgba(255,255,255,0.1)' : 'none',
+                            color: deadlineUnit === unit ? '#d94e18' : 'rgba(185,190,200,0.45)',
+                            fontSize: 11, fontWeight: 700, cursor: 'pointer',
+                            fontFamily: 'inherit', letterSpacing: '0.06em',
+                            transition: 'all 0.15s', whiteSpace: 'nowrap',
+                          }}>
+                          {unit === 'hours' ? 'h' : 'd'}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <p style={{ fontSize: 10, color: 'rgba(185,190,200,0.3)', margin: '4px 0 0' }}>
+                    {deadlineUnit === 'days' ? 'Dias corridos para entrega' : 'Horas para entrega'}
+                  </p>
                 </div>
               </div>
             </div>
