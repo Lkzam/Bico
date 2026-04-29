@@ -2,12 +2,83 @@
 
 import Link from 'next/link'
 import Image from 'next/image'
-import { ArrowRight } from 'lucide-react'
+import { useState } from 'react'
+import { ArrowRight, Menu, X } from 'lucide-react'
 import LiquidEther from '@/components/LiquidEther'
 
 export default function Home() {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+
   return (
     <div style={{ background: '#0b0e17', color: '#fff', fontFamily: 'var(--font-body), Inter, sans-serif' }}>
+
+      <style>{`
+        /* ── Mobile responsivo — Landing Page ── */
+
+        .nav-desktop  { display: flex; }
+        .nav-hamburger { display: none !important; }
+
+        @media (max-width: 768px) {
+          .nav-desktop   { display: none !important; }
+          .nav-hamburger { display: flex !important; }
+          .nav-container { padding: 0 20px !important; height: 60px !important; }
+
+          .hero-text {
+            max-width: 100% !important;
+            padding-left: 20px !important;
+            padding-right: 20px !important;
+            padding-top: 48px !important;
+            padding-bottom: 64px !important;
+          }
+          .hero-logo  { display: none !important; }
+          .hero-overlay { background: rgba(11,8,8,0.72) !important; }
+          .hero-ctas  { flex-direction: column !important; }
+          .hero-ctas a { justify-content: center !important; text-align: center; }
+
+          .stats-outer  { padding: 0 20px !important; }
+          .stats-grid   {
+            display: grid !important;
+            grid-template-columns: repeat(2, 1fr) !important;
+            gap: 16px !important;
+          }
+          .stats-card   {
+            flex: none !important;
+            min-width: 0 !important;
+            max-width: 100% !important;
+            padding: 24px 16px !important;
+          }
+          .stats-num { font-size: 36px !important; }
+
+          .como-grid {
+            grid-template-columns: 1fr !important;
+            gap: 40px !important;
+            padding: 0 20px !important;
+          }
+          .como-visual { padding: 32px 24px !important; }
+
+          .features-outer { padding: 0 20px !important; }
+          .features-h2    { font-size: 2rem !important; }
+
+          .testimonials-outer { padding: 0 20px !important; }
+          .testimonials-grid  { grid-template-columns: 1fr !important; }
+          .testimonial-card   { padding: 28px 20px !important; }
+
+          .cta-final-wrap { flex-direction: column !important; padding: 0 20px !important; gap: 32px !important; }
+
+          .footer-inner {
+            flex-direction: column !important;
+            align-items: center !important;
+            text-align: center !important;
+            padding: 32px 20px !important;
+            gap: 16px !important;
+          }
+        }
+
+        @media (max-width: 480px) {
+          .stats-grid { grid-template-columns: 1fr !important; }
+          .hero-headline { font-size: 2.8rem !important; }
+        }
+      `}</style>
 
       {/* ── NAVBAR ── */}
       <header style={{
@@ -15,7 +86,7 @@ export default function Home() {
         background: '#0b0e17',
         borderBottom: '1px solid rgba(185,190,200,0.15)',
       }}>
-        <div style={{
+        <div className="nav-container" style={{
           maxWidth: 1400, margin: '0 auto',
           padding: '0 48px', height: 72,
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -23,7 +94,9 @@ export default function Home() {
           <span style={{ fontFamily: 'var(--font-heading), DM Sans, sans-serif', fontSize: 20, fontWeight: 700, color: '#fff', letterSpacing: '-0.02em' }}>
             Bico
           </span>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+
+          {/* Desktop nav */}
+          <div className="nav-desktop" style={{ alignItems: 'center', gap: 12 }}>
             <Link href="/login" style={{ fontSize: 14, color: 'rgba(185,190,200,0.78)', textDecoration: 'none', padding: '8px 16px', transition: 'color 0.2s' }}
               onMouseOver={e => (e.currentTarget.style.color = '#d4783a')}
               onMouseOut={e => (e.currentTarget.style.color = 'rgba(185,190,200,0.78)')}>
@@ -40,7 +113,47 @@ export default function Home() {
               Começar grátis
             </Link>
           </div>
+
+          {/* Mobile hamburger */}
+          <button
+            className="nav-hamburger"
+            onClick={() => setMobileMenuOpen(o => !o)}
+            style={{
+              background: 'none', border: 'none', cursor: 'pointer',
+              color: '#fff', padding: 8, display: 'none',
+              alignItems: 'center', justifyContent: 'center',
+            }}
+          >
+            {mobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
+          </button>
         </div>
+
+        {/* Mobile dropdown */}
+        {mobileMenuOpen && (
+          <div style={{
+            background: '#0b0e17',
+            borderTop: '1px solid rgba(185,190,200,0.1)',
+            padding: '16px 20px',
+            display: 'flex', flexDirection: 'column', gap: 10,
+          }}>
+            <Link href="/login" onClick={() => setMobileMenuOpen(false)} style={{
+              fontSize: 15, color: 'rgba(185,190,200,0.85)', textDecoration: 'none',
+              padding: '13px 20px', borderRadius: 8,
+              background: 'rgba(255,255,255,0.04)',
+              textAlign: 'center',
+            }}>
+              Entrar
+            </Link>
+            <Link href="/register" onClick={() => setMobileMenuOpen(false)} style={{
+              fontSize: 13, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase',
+              padding: '14px 20px', borderRadius: 40,
+              background: '#d94e18', color: '#fff', textDecoration: 'none',
+              textAlign: 'center',
+            }}>
+              Começar grátis
+            </Link>
+          </div>
+        )}
       </header>
 
       {/* ── HERO ── */}
@@ -60,11 +173,11 @@ export default function Home() {
           />
         </div>
 
-        {/* Overlay escuro suave para legibilidade do texto */}
-        <div style={{ position: 'absolute', inset: 0, zIndex: 1, background: 'linear-gradient(to right, rgba(11,8,8,0.82) 0%, rgba(11,8,8,0.55) 55%, rgba(11,8,8,0.1) 100%)' }} />
+        {/* Overlay */}
+        <div className="hero-overlay" style={{ position: 'absolute', inset: 0, zIndex: 1, background: 'linear-gradient(to right, rgba(11,8,8,0.82) 0%, rgba(11,8,8,0.55) 55%, rgba(11,8,8,0.1) 100%)' }} />
 
-        {/* Logo SVG direita */}
-        <div style={{
+        {/* Logo SVG direita — escondida no mobile */}
+        <div className="hero-logo" style={{
           position: 'absolute',
           top: '50%', left: '62%',
           transform: 'translateY(-50%)',
@@ -75,13 +188,11 @@ export default function Home() {
           <Image src="/logo.svg" alt="Bico" width={340} height={192} style={{ objectFit: 'contain', filter: 'drop-shadow(0 0 40px rgba(217,78,24,0.35))' }} />
         </div>
 
-        {/* Texto esquerda */}
-        <div style={{
+        {/* Texto */}
+        <div className="hero-text" style={{
           position: 'relative', zIndex: 10,
           maxWidth: '46%', paddingLeft: '8%', paddingRight: 24, paddingTop: 80, paddingBottom: 80,
         }}>
-
-          {/* Eyebrow */}
           <div className="animate-fade-up-1" style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 28 }}>
             <div className="animate-dot-pulse" style={{ width: 8, height: 8, borderRadius: '50%', background: '#d94e18' }} />
             <span style={{ fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: '#d94e18' }}>
@@ -89,8 +200,7 @@ export default function Home() {
             </span>
           </div>
 
-          {/* Headline */}
-          <h1 className="animate-fade-up-2" style={{
+          <h1 className="hero-headline animate-fade-up-2" style={{
             fontFamily: 'var(--font-body), Inter, sans-serif',
             fontSize: 'clamp(3rem, 6.5vw, 7rem)',
             fontWeight: 900, lineHeight: 0.95,
@@ -101,7 +211,6 @@ export default function Home() {
             <span style={{ color: 'rgba(160,152,148,0.88)' }}>fazendo o que<br />você sabe</span>
           </h1>
 
-          {/* Sub */}
           <p className="animate-fade-up-3" style={{
             fontSize: 'clamp(0.85rem, 1.1vw, 1rem)',
             lineHeight: 1.72, color: 'rgba(160,152,148,0.88)',
@@ -112,8 +221,7 @@ export default function Home() {
             e receba via PIX direto no app.
           </p>
 
-          {/* CTAs */}
-          <div className="animate-fade-up-4" style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+          <div className="hero-ctas animate-fade-up-4" style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
             <Link href="/register" style={{
               display: 'inline-flex', alignItems: 'center', gap: 8,
               fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase',
@@ -143,26 +251,28 @@ export default function Home() {
 
       {/* ── STATS CARDS ── */}
       <section style={{ background: '#0b0e17', padding: '80px 0' }}>
-        <div style={{ maxWidth: 1400, margin: '0 auto', padding: '0 48px' }}>
-          <div style={{ display: 'flex', gap: 32, flexWrap: 'wrap', justifyContent: 'center' }}>
-            {[
-              { num: '01', title: 'Crie seu perfil', sub: 'Adicione tags de habilidades', label: 'PASSO' },
-              { num: '02', title: 'Receba notificações', sub: 'Jobs compatíveis em tempo real', label: 'PASSO' },
-              { num: '03', title: 'Aceite na hora', sub: 'Primeiro a aceitar fica com o job', label: 'PASSO' },
-              { num: 'PIX', title: 'Saque quando quiser', sub: 'Dinheiro direto na sua chave PIX', label: 'PAGAMENTO' },
-            ].map((card) => (
-              <StatsCard key={card.num} {...card} />
-            ))}
+        <div style={{ maxWidth: 1400, margin: '0 auto' }}>
+          <div className="stats-outer" style={{ padding: '0 48px' }}>
+            <div className="stats-grid" style={{ display: 'flex', gap: 32, flexWrap: 'wrap', justifyContent: 'center' }}>
+              {[
+                { num: '01', title: 'Crie seu perfil',       sub: 'Adicione tags de habilidades',             label: 'PASSO'      },
+                { num: '02', title: 'Receba notificações',   sub: 'Jobs compatíveis em tempo real',           label: 'PASSO'      },
+                { num: '03', title: 'Aceite na hora',        sub: 'Primeiro a aceitar fica com o job',        label: 'PASSO'      },
+                { num: 'PIX', title: 'Saque quando quiser', sub: 'Dinheiro direto na sua chave PIX',         label: 'PAGAMENTO'  },
+              ].map((card) => (
+                <StatsCard key={card.num} {...card} />
+              ))}
+            </div>
           </div>
         </div>
       </section>
 
       {/* ── COMO FUNCIONA ── */}
       <section style={{ background: '#0b0e17', padding: '80px 0', borderTop: '1px solid rgba(185,190,200,0.08)' }}>
-        <div style={{ maxWidth: 1320, margin: '0 auto', padding: '0 60px', display: 'grid', gridTemplateColumns: '42% 1fr', gap: 80, alignItems: 'center' }}>
+        <div className="como-grid" style={{ maxWidth: 1320, margin: '0 auto', padding: '0 60px', display: 'grid', gridTemplateColumns: '42% 1fr', gap: 80, alignItems: 'center' }}>
 
           {/* Esquerda — visual */}
-          <div style={{
+          <div className="como-visual" style={{
             background: 'linear-gradient(135deg, rgba(217,78,24,0.08) 0%, rgba(255,255,255,0.02) 100%)',
             border: '1px solid rgba(217,78,24,0.2)',
             borderRadius: 16, padding: '48px 40px',
@@ -182,7 +292,6 @@ export default function Home() {
                 <span style={{ fontSize: 14, color: i === 4 ? '#fff' : 'rgba(185,190,200,0.78)', fontWeight: i === 4 ? 600 : 400 }}>
                   {step}
                 </span>
-                {i < 4 && <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.06)', marginLeft: 'auto' }} />}
               </div>
             ))}
           </div>
@@ -222,11 +331,11 @@ export default function Home() {
 
       {/* ── FEATURES / DIFERENCIAIS ── */}
       <section style={{ background: '#0b0e17', padding: '80px 0', borderTop: '1px solid rgba(185,190,200,0.08)' }}>
-        <div style={{ maxWidth: 1400, margin: '0 auto', padding: '0 48px' }}>
+        <div className="features-outer" style={{ maxWidth: 1400, margin: '0 auto', padding: '0 48px' }}>
           <p style={{ fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#d4783a', marginBottom: 16, textAlign: 'center' }}>
             — Por que o Bico
           </p>
-          <h2 style={{
+          <h2 className="features-h2" style={{
             fontFamily: 'var(--font-heading), DM Sans, sans-serif',
             fontSize: '3.5rem', fontWeight: 600, lineHeight: 1.2,
             letterSpacing: '-0.02em', color: '#f5f5f5',
@@ -234,13 +343,12 @@ export default function Home() {
           }}>
             Feito para o brasileiro
           </h2>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 24 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 24 }}>
             {[
-              { icon: '⚡', title: 'Rápido como o Uber', desc: 'Job aparece como notificação. O primeiro a aceitar fica com ele — sem fila, sem leilão.' },
-              { icon: '🔒', title: 'Pagamento protegido', desc: 'A empresa paga antes. O dinheiro só é liberado para o freelancer após a entrega aprovada.' },
-              { icon: '⭐', title: 'Sistema de estrelas', desc: 'Quanto melhor sua nota, mais jobs aparecem. Empresa ruim atrai freelancer ruim — e vice-versa.' },
-              { icon: '📱', title: 'Saque via PIX', desc: 'Informe sua chave PIX e saque quando quiser, direto do app. Sem criar conta em lugar nenhum.' },
+              { icon: '⚡', title: 'Rápido como o Uber',    desc: 'Job aparece como notificação. O primeiro a aceitar fica com ele — sem fila, sem leilão.' },
+              { icon: '🔒', title: 'Pagamento protegido',   desc: 'A empresa paga antes. O dinheiro só é liberado para o freelancer após a entrega aprovada.' },
+              { icon: '⭐', title: 'Sistema de estrelas',   desc: 'Quanto melhor sua nota, mais jobs aparecem. Empresa ruim atrai freelancer ruim — e vice-versa.' },
+              { icon: '📱', title: 'Saque via PIX',         desc: 'Informe sua chave PIX e saque quando quiser, direto do app. Sem criar conta em lugar nenhum.' },
             ].map((f) => (
               <FeatureCard key={f.title} {...f} />
             ))}
@@ -250,7 +358,7 @@ export default function Home() {
 
       {/* ── DEPOIMENTOS ── */}
       <section style={{ background: '#0b0e17', padding: '96px 0', borderTop: '1px solid rgba(185,190,200,0.08)' }}>
-        <div style={{ maxWidth: 1400, margin: '0 auto', padding: '0 48px' }}>
+        <div className="testimonials-outer" style={{ maxWidth: 1400, margin: '0 auto', padding: '0 48px' }}>
           <div style={{
             fontSize: '0.6875rem', fontWeight: 600, letterSpacing: '0.35em',
             textTransform: 'uppercase', color: '#C18F6B',
@@ -259,7 +367,7 @@ export default function Home() {
           }}>
             Confiado por profissionais
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 32 }}>
+          <div className="testimonials-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 32 }}>
             {[
               { text: '"Fiz R$1.200 no primeiro mês sem sair de casa. Só precisei cadastrar minhas habilidades de design e os jobs começaram a aparecer."', name: 'Ana Lima', role: 'Designer Gráfica, São Paulo' },
               { text: '"Contratei um dev para um projeto urgente em menos de 10 minutos. O trabalho foi entregue no prazo e o pagamento foi totalmente seguro pelo app."', name: 'Ricardo Matos', role: 'CEO, Startup de Marketing' },
@@ -274,7 +382,7 @@ export default function Home() {
 
       {/* ── CTA FINAL ── */}
       <section style={{ background: '#0b0808', padding: '96px 0', borderTop: '1px solid rgba(185,190,200,0.08)' }}>
-        <div style={{ maxWidth: 900, margin: '0 auto', padding: '0 48px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 64, flexWrap: 'wrap' }}>
+        <div className="cta-final-wrap" style={{ maxWidth: 900, margin: '0 auto', padding: '0 48px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 64, flexWrap: 'wrap' }}>
           <div style={{ flex: 1, minWidth: 280 }}>
             <p style={{ fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: '#d4783a', marginBottom: 16 }}>
               Comece agora
@@ -292,7 +400,7 @@ export default function Home() {
           <div style={{ flex: 1, minWidth: 280 }}>
             <p style={{ fontSize: 'clamp(0.88rem, 1.1vw, 1rem)', lineHeight: 1.72, color: 'rgba(185,190,200,0.78)', marginBottom: 32 }}>
               Crie sua conta em menos de 1 minuto. Grátis para sempre.
-              Só cobramos uma taxa de 15% quando você receber — ou seja, só ganhamos se você ganhar.
+              Só cobramos uma taxa quando um job for concluído — ou seja, só ganhamos se você ganhar.
             </p>
             <Link href="/register" style={{
               display: 'inline-flex', alignItems: 'center', gap: 8,
@@ -309,12 +417,12 @@ export default function Home() {
       </section>
 
       {/* ── FOOTER ── */}
-      <footer style={{ background: '#0b0e17', borderTop: '1px solid rgba(185,190,200,0.1)', padding: '48px' }}>
-        <div style={{ maxWidth: 1400, margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
+      <footer style={{ background: '#0b0e17', borderTop: '1px solid rgba(185,190,200,0.1)' }}>
+        <div className="footer-inner" style={{ maxWidth: 1400, margin: '0 auto', padding: '48px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
           <span style={{ fontFamily: 'var(--font-heading)', fontSize: 18, fontWeight: 700, color: '#fff' }}>Bico</span>
-          <p style={{ fontSize: '0.85rem', color: 'rgba(185,190,200,0.5)' }}>©NovaIris. Todos os direitos reservados.</p>
+          <p style={{ fontSize: '0.85rem', color: 'rgba(185,190,200,0.5)', margin: 0 }}>©NovaIris. Todos os direitos reservados.</p>
           <div style={{ display: 'flex', gap: 24 }}>
-            <Link href="/login" style={{ fontSize: '0.95rem', color: 'rgba(185,190,200,0.6)', textDecoration: 'none' }}>Entrar</Link>
+            <Link href="/login"    style={{ fontSize: '0.95rem', color: 'rgba(185,190,200,0.6)', textDecoration: 'none' }}>Entrar</Link>
             <Link href="/register" style={{ fontSize: '0.95rem', color: 'rgba(185,190,200,0.6)', textDecoration: 'none' }}>Cadastrar</Link>
           </div>
         </div>
@@ -328,7 +436,7 @@ export default function Home() {
 
 function StatsCard({ num, title, sub, label }: { num: string, title: string, sub: string, label: string }) {
   return (
-    <div style={{
+    <div className="stats-card" style={{
       background: 'linear-gradient(135deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 100%)',
       border: '1px solid rgba(255,255,255,0.12)',
       borderRadius: 16, padding: '40px 32px',
@@ -350,7 +458,7 @@ function StatsCard({ num, title, sub, label }: { num: string, title: string, sub
         el.style.borderColor = 'rgba(255,255,255,0.12)'
       }}>
       <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#6b7280' }}>{label}</span>
-      <span style={{ fontFamily: 'var(--font-heading), DM Sans, sans-serif', fontSize: 48, fontWeight: 700, lineHeight: 1, color: '#fff' }}>{num}</span>
+      <span className="stats-num" style={{ fontFamily: 'var(--font-heading), DM Sans, sans-serif', fontSize: 48, fontWeight: 700, lineHeight: 1, color: '#fff' }}>{num}</span>
       <span style={{ fontFamily: 'var(--font-heading)', fontSize: 18, fontWeight: 600, color: '#fff' }}>{title}</span>
       <span style={{ fontSize: 14, color: '#9ca3af', lineHeight: 1.5 }}>{sub}</span>
     </div>
@@ -386,7 +494,7 @@ function FeatureCard({ icon, title, desc }: { icon: string, title: string, desc:
 
 function TestimonialCard({ text, name, role }: { text: string, name: string, role: string }) {
   return (
-    <div style={{
+    <div className="testimonial-card" style={{
       border: '1px solid rgba(255,255,255,0.1)',
       borderRadius: 8, padding: '40px',
       background: 'rgba(255,255,255,0.02)',
