@@ -35,6 +35,7 @@ export async function POST(req: NextRequest) {
     role,
     name,
     bio: bio || null,
+    terms_accepted_at: new Date().toISOString(),
   })
 
   if (error) {

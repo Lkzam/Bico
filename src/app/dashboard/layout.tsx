@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { Sidebar } from '@/components/sidebar'
+import { TermsAcceptanceModal } from '@/components/TermsAcceptanceModal'
 import { Toaster } from 'sonner'
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -26,6 +27,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
         </div>
       </main>
       <Toaster position="top-right" richColors />
+      <TermsAcceptanceModal alreadyAccepted={!!profile.terms_accepted_at} />
     </div>
   )
 }
