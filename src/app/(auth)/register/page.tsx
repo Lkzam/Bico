@@ -15,9 +15,14 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false)
   const [role, setRole] = useState<UserRole>('freelancer')
   const [form, setForm] = useState({ email: '', password: '', name: '', bio: '' })
+  const [acceptedTerms, setAcceptedTerms] = useState(false)
 
   async function handleRegister(e: React.FormEvent) {
     e.preventDefault()
+    if (!acceptedTerms) {
+      toast.error('Você precisa aceitar os Termos de Serviço para continuar.')
+      return
+    }
     setLoading(true)
 
     const { data, error } = await supabase.auth.signUp({
@@ -197,19 +202,62 @@ export default function RegisterPage() {
                 />
               </div>
 
+              {/* Consentimento obrigatório */}
+              <label style={{
+                display: 'flex', alignItems: 'flex-start', gap: 12,
+                cursor: 'pointer', padding: '14px 16px',
+                background: acceptedTerms ? 'rgba(217,78,24,0.07)' : 'rgba(255,255,255,0.02)',
+                border: `1px solid ${acceptedTerms ? 'rgba(217,78,24,0.3)' : 'rgba(255,255,255,0.1)'}`,
+                transition: 'all 0.2s',
+              }}>
+                <div style={{ position: 'relative', flexShrink: 0, marginTop: 1 }}>
+                  <input
+                    type="checkbox"
+                    checked={acceptedTerms}
+                    onChange={e => setAcceptedTerms(e.target.checked)}
+                    style={{ position: 'absolute', opacity: 0, width: 0, height: 0 }}
+                  />
+                  <div style={{
+                    width: 18, height: 18,
+                    background: acceptedTerms ? '#d94e18' : 'transparent',
+                    border: `2px solid ${acceptedTerms ? '#d94e18' : 'rgba(185,190,200,0.3)'}`,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    transition: 'all 0.15s',
+                  }}>
+                    {acceptedTerms && (
+                      <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
+                        <path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    )}
+                  </div>
+                </div>
+                <span style={{ fontSize: 12, color: 'rgba(185,190,200,0.7)', lineHeight: 1.55 }}>
+                  Li e concordo com os{' '}
+                  <Link href="/termos" target="_blank" style={{ color: '#d4783a', fontWeight: 600, textDecoration: 'none' }}>
+                    Termos de Serviço
+                  </Link>
+                  {' '}e a{' '}
+                  <Link href="/privacidade" target="_blank" style={{ color: '#d4783a', fontWeight: 600, textDecoration: 'none' }}>
+                    Política de Privacidade
+                  </Link>
+                  {' '}do Bico.
+                </span>
+              </label>
+
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || !acceptedTerms}
                 style={{
                   width: '100%', padding: '15px 32px',
-                  background: loading ? 'rgba(217,78,24,0.5)' : '#d94e18',
-                  color: '#fff', border: 'none', cursor: loading ? 'not-allowed' : 'pointer',
+                  background: loading || !acceptedTerms ? 'rgba(217,78,24,0.35)' : '#d94e18',
+                  color: loading || !acceptedTerms ? 'rgba(255,255,255,0.4)' : '#fff',
+                  border: 'none', cursor: loading || !acceptedTerms ? 'not-allowed' : 'pointer',
                   fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase',
                   transition: 'background 0.2s, box-shadow 0.2s',
                   fontFamily: 'inherit', marginTop: 8,
                 }}
-                onMouseOver={e => { if (!loading) { (e.currentTarget as HTMLButtonElement).style.background = '#c04010'; (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 4px 20px rgba(217,78,24,0.4)'; } }}
-                onMouseOut={e => { (e.currentTarget as HTMLButtonElement).style.background = loading ? 'rgba(217,78,24,0.5)' : '#d94e18'; (e.currentTarget as HTMLButtonElement).style.boxShadow = 'none'; }}
+                onMouseOver={e => { if (!loading && acceptedTerms) { (e.currentTarget as HTMLButtonElement).style.background = '#c04010'; (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 4px 20px rgba(217,78,24,0.4)'; } }}
+                onMouseOut={e => { (e.currentTarget as HTMLButtonElement).style.background = loading || !acceptedTerms ? 'rgba(217,78,24,0.35)' : '#d94e18'; (e.currentTarget as HTMLButtonElement).style.boxShadow = 'none'; }}
               >
                 {loading ? 'Criando conta...' : 'Criar conta grátis'}
               </button>
