@@ -196,7 +196,7 @@ export default function ChatPage() {
   const other = profile?.role === 'company' ? chat?.freelancer : chat?.company
 
   return (
-    <div style={{ color: '#fff', display: 'flex', flexDirection: 'column', height: 'calc(100vh - 80px)' }}>
+    <div className="dash-chat-container" style={{ color: '#fff', display: 'flex', flexDirection: 'column', height: 'calc(100vh - 80px)' }}>
 
       {/* Header */}
       <div style={{ marginBottom: 24, flexShrink: 0 }}>

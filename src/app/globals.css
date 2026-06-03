@@ -61,3 +61,127 @@ body {
 .animate-fade-up-2 { animation: fadeUp 1.0s  cubic-bezier(0.22, 1, 0.36, 1) forwards 0.2s;  opacity: 0; }
 .animate-fade-up-3 { animation: fadeUp 0.85s cubic-bezier(0.22, 1, 0.36, 1) forwards 0.55s; opacity: 0; }
 .animate-fade-up-4 { animation: fadeUp 0.85s cubic-bezier(0.22, 1, 0.36, 1) forwards 0.8s;  opacity: 0; }
+
+/* ── Dashboard Mobile Responsiveness ──────────────────────────────────────── */
+
+@media (max-width: 768px) {
+  /* Layout container: remove flex row, add bottom padding for mobile nav */
+  .dash-layout {
+    flex-direction: column !important;
+    height: auto !important;
+    min-height: 100vh !important;
+    padding-bottom: 64px !important;
+  }
+
+  /* Sidebar desktop: hide on mobile */
+  .dash-sidebar {
+    display: none !important;
+  }
+
+  /* Main content: reduce padding */
+  .dash-main-pad {
+    padding: 24px 16px 32px !important;
+  }
+
+  /* Stats grids: 4 col → 2 col */
+  .dash-stats-4 {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 10px !important;
+  }
+
+  /* Stats card: reduce padding */
+  .dash-stat-card {
+    padding: 16px 14px !important;
+  }
+
+  /* Stat value font size */
+  .dash-stat-value {
+    font-size: 22px !important;
+  }
+
+  /* Post-job 2-col form → 1 col */
+  .dash-form-2col {
+    grid-template-columns: 1fr !important;
+    gap: 20px !important;
+  }
+
+  /* Value + deadline inline fields → stack */
+  .dash-inline-2 {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+  }
+
+  /* Job list row: side-by-side → stacked */
+  .dash-job-row {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 10px !important;
+  }
+
+  .dash-job-row-right {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
+    gap: 8px !important;
+    width: 100% !important;
+  }
+
+  /* Available job row: side-by-side → stacked */
+  .dash-avail-row {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 12px !important;
+  }
+
+  .dash-avail-row-right {
+    flex-direction: row !important;
+    width: 100% !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    flex-shrink: unset !important;
+  }
+
+  /* Page header: stack on mobile */
+  .dash-page-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 16px !important;
+  }
+
+  /* Notification panel: full width on mobile */
+  .dash-notif-panel {
+    left: 0 !important;
+    right: 0 !important;
+    width: auto !important;
+    bottom: 64px !important;
+    margin: 0 8px !important;
+    max-height: 70vh !important;
+  }
+
+  /* Chat: altura corrigida no mobile (desconta bottom nav + padding) */
+  .dash-chat-container {
+    height: calc(100dvh - 160px) !important;
+  }
+
+  /* Messages list row on mobile */
+  .dash-msg-row {
+    padding: 14px 16px !important;
+  }
+
+  /* Support chat: full height on mobile */
+  .dash-support-container {
+    height: calc(100vh - 140px) !important;
+    max-height: none !important;
+  }
+
+  /* Withdraw page */
+  .dash-withdraw-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Action buttons: smaller on mobile */
+  .dash-btn-group {
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+  }
+}

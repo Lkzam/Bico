@@ -65,7 +65,7 @@ export default function CompanyDashboard() {
     <div style={{ color: '#fff' }}>
 
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 40, flexWrap: 'wrap', gap: 16 }}>
+      <div className="dash-page-header" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 40, flexWrap: 'wrap', gap: 16 }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
             <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#d94e18', boxShadow: '0 0 6px rgba(217,78,24,0.9)' }} />
@@ -94,9 +94,9 @@ export default function CompanyDashboard() {
       </div>
 
       {/* Stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 40 }}>
+      <div className="dash-stats-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 40 }}>
         {stats.map(({ icon: Icon, label, value }) => (
-          <div key={label} style={{
+          <div key={label} className="dash-stat-card" style={{
             background: 'rgba(255,255,255,0.03)',
             border: '1px solid rgba(255,255,255,0.08)',
             padding: '24px 20px',
@@ -107,7 +107,7 @@ export default function CompanyDashboard() {
                 {label}
               </span>
             </div>
-            <p style={{ fontSize: 32, fontWeight: 800, color: '#fff', margin: 0, letterSpacing: '-0.02em', fontFamily: 'var(--font-heading)' }}>
+            <p className="dash-stat-value" style={{ fontSize: 32, fontWeight: 800, color: '#fff', margin: 0, letterSpacing: '-0.02em', fontFamily: 'var(--font-heading)' }}>
               {value}
             </p>
           </div>
@@ -143,7 +143,7 @@ export default function CompanyDashboard() {
             </div>
           ) : (
             jobs.map((job: any, i: number) => (
-              <div key={job.id} style={{
+              <div key={job.id} className="dash-job-row" style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                 padding: '16px 20px',
                 borderBottom: i < jobs.length - 1 ? '1px solid rgba(255,255,255,0.06)' : 'none',
@@ -157,7 +157,7 @@ export default function CompanyDashboard() {
                     {formatDate(job.created_at)}
                   </p>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                <div className="dash-job-row-right" style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
                   <span style={{ fontSize: 15, fontWeight: 700, color: '#fff', fontFamily: 'var(--font-heading)' }}>
                     {formatCurrency(job.value)}
                   </span>

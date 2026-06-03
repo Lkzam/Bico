@@ -123,7 +123,7 @@ export default function SupportPage() {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 80px)', maxHeight: 780, fontFamily: 'var(--font-body), Inter, sans-serif' }}>
+    <div className="dash-support-container" style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 80px)', maxHeight: 780, fontFamily: 'var(--font-body), Inter, sans-serif' }}>
 
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>

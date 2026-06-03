@@ -27,8 +27,17 @@ export function Sidebar({ profile }: SidebarProps) {
   const [notifOpen,      setNotifOpen]      = useState(false)
   const [notifList,      setNotifList]      = useState<any[]>([])
   const [expandedNotif,  setExpandedNotif]  = useState<any | null>(null)
+  const [isMobile,       setIsMobile]       = useState(false)
 
   const chatIdsRef = useRef<string[]>([])
+
+  // Detecta mobile e escuta resize
+  useEffect(() => {
+    function check() { setIsMobile(window.innerWidth <= 768) }
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
 
   // Persiste preferência de colapso no localStorage (sem hydration mismatch)
   useEffect(() => {
@@ -162,8 +171,25 @@ export function Sidebar({ profile }: SidebarProps) {
 
   const sidebarWidth = collapsed ? 64 : 240
 
+  // ── Links resumidos para bottom nav mobile (máx 5) ──────────────────────
+  const mobileLinks = isCompany
+    ? [
+        { href: '/dashboard/company',          label: 'Início',    icon: LayoutDashboard },
+        { href: '/dashboard/company/post-job', label: 'Publicar',  icon: PlusCircle      },
+        { href: '/dashboard/company/jobs',     label: 'Trabalhos', icon: Briefcase       },
+        { href: '/dashboard/messages',         label: 'Chat',      icon: MessageSquare   },
+        { href: '/dashboard/settings',         label: 'Config',    icon: Settings        },
+      ]
+    : [
+        { href: '/dashboard/freelancer',          label: 'Início',    icon: LayoutDashboard },
+        { href: '/dashboard/freelancer/jobs',     label: 'Trabalhos', icon: Briefcase       },
+        { href: '/dashboard/messages',            label: 'Chat',      icon: MessageSquare   },
+        { href: '/dashboard/freelancer/withdraw', label: 'Sacar',     icon: Wallet          },
+        { href: '/dashboard/settings',            label: 'Config',    icon: Settings        },
+      ]
+
   return (
-    <aside style={{
+    <aside className="dash-sidebar" style={{
       width: sidebarWidth,
       minWidth: sidebarWidth,
       background: '#0b0808',
@@ -472,7 +498,7 @@ export function Sidebar({ profile }: SidebarProps) {
 
       {/* ── Painel de notificações ── */}
       {notifOpen && (
-        <div style={{
+        <div className="dash-notif-panel" style={{
           position: 'fixed',
           bottom: 80,
           left: collapsed ? 72 : 248,
@@ -579,5 +605,325 @@ export function Sidebar({ profile }: SidebarProps) {
         </div>
       )}
     </aside>
+  )
+}
+
+// ── Mobile Bottom Navigation Bar ─────────────────────────────────────────────
+// Exportado junto mas renderizado separadamente pelo layout no mobile
+export function MobileBottomNav({ profile }: SidebarProps) {
+  const pathname  = usePathname()
+  const router    = useRouter()
+  const supabase  = createClient()
+  const isCompany = profile.role === 'company'
+
+  const [unreadChats, setUnreadChats] = useState(0)
+  const [notifCount,  setNotifCount]  = useState(0)
+  const [notifOpen,   setNotifOpen]   = useState(false)
+  const [notifList,   setNotifList]   = useState<any[]>([])
+  const [expandedNotif, setExpandedNotif] = useState<any | null>(null)
+  const [isMobile, setIsMobile] = useState(false)
+
+  const chatIdsRef = useRef<string[]>([])
+
+  useEffect(() => {
+    function check() { setIsMobile(window.innerWidth <= 768) }
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
+
+  async function fetchNotifications() {
+    const { data } = await supabase
+      .from('notifications').select('*')
+      .eq('profile_id', profile.id)
+      .order('created_at', { ascending: false }).limit(30)
+    const list = data ?? []
+    setNotifList(list)
+    setNotifCount(list.filter((n: any) => !n.read).length)
+  }
+
+  async function markAllRead() {
+    await supabase.from('notifications').update({ read: true })
+      .eq('profile_id', profile.id).eq('read', false)
+    setNotifList(prev => prev.map(n => ({ ...n, read: true })))
+    setNotifCount(0)
+  }
+
+  async function fetchUnread() {
+    const myField     = isCompany ? 'company_id'           : 'freelancer_id'
+    const lastReadCol = isCompany ? 'company_last_read_at' : 'freelancer_last_read_at'
+    const { data: chats } = await supabase.from('chats').select(`id, ${lastReadCol}`).eq(myField, profile.id)
+    if (!chats?.length) { setUnreadChats(0); return }
+    chatIdsRef.current = chats.map(c => c.id)
+    let count = 0
+    for (const chat of chats) {
+      const lastRead = (chat as any)[lastReadCol]
+      let q = supabase.from('messages').select('id', { count: 'exact', head: true })
+        .eq('chat_id', chat.id).neq('sender_id', profile.id)
+      if (lastRead) q = q.gt('created_at', lastRead)
+      const { count: c } = await q
+      if ((c ?? 0) > 0) count++
+    }
+    setUnreadChats(count)
+  }
+
+  useEffect(() => {
+    fetchUnread()
+    fetchNotifications()
+    const notifChannel = supabase
+      .channel(`mobile-notif-${profile.id}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications', filter: `profile_id=eq.${profile.id}` }, (payload) => {
+        const notif = payload.new as any
+        setNotifList(prev => [{ ...notif, read: false, created_at: new Date().toISOString() }, ...prev])
+        setNotifCount(prev => prev + 1)
+      })
+      .subscribe()
+    const messagesChannel = supabase
+      .channel(`mobile-unread-${profile.id}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (payload) => {
+        const msg = payload.new as { sender_id: string; chat_id: string }
+        if (msg.sender_id === profile.id) return
+        if (chatIdsRef.current.length === 0 || chatIdsRef.current.includes(msg.chat_id)) fetchUnread()
+      })
+      .subscribe()
+    return () => {
+      supabase.removeChannel(notifChannel)
+      supabase.removeChannel(messagesChannel)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!pathname.startsWith('/dashboard/messages/')) fetchUnread()
+  }, [pathname])
+
+  async function handleLogout() {
+    await supabase.auth.signOut()
+    router.push('/login')
+    router.refresh()
+  }
+
+  const mobileLinks = isCompany
+    ? [
+        { href: '/dashboard/company',          label: 'Início',    icon: LayoutDashboard },
+        { href: '/dashboard/company/post-job', label: 'Publicar',  icon: PlusCircle      },
+        { href: '/dashboard/company/jobs',     label: 'Trabalhos', icon: Briefcase       },
+        { href: '/dashboard/messages',         label: 'Chat',      icon: MessageSquare   },
+        { href: '/dashboard/settings',         label: 'Config',    icon: Settings        },
+      ]
+    : [
+        { href: '/dashboard/freelancer',          label: 'Início',    icon: LayoutDashboard },
+        { href: '/dashboard/freelancer/jobs',     label: 'Trabalhos', icon: Briefcase       },
+        { href: '/dashboard/messages',            label: 'Chat',      icon: MessageSquare   },
+        { href: '/dashboard/freelancer/withdraw', label: 'Sacar',     icon: Wallet          },
+        { href: '/dashboard/settings',            label: 'Config',    icon: Settings        },
+      ]
+
+  if (!isMobile) return null
+
+  return (
+    <>
+      {/* ── Popup motivo cancelamento (mobile) ── */}
+      {expandedNotif && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 5100,
+          background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(4px)',
+          display: 'flex', alignItems: 'flex-end', padding: '0',
+        }} onClick={e => { if (e.target === e.currentTarget) setExpandedNotif(null) }}>
+          <div style={{
+            width: '100%', background: '#0f1219',
+            border: '1px solid rgba(239,68,68,0.25)',
+            borderBottom: 'none', padding: 24, paddingBottom: 32,
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <AlertCircle size={14} style={{ color: '#ef4444' }} />
+                <p style={{ fontSize: 14, fontWeight: 700, color: '#fff', margin: 0 }}>
+                  {expandedNotif.metadata?.job_title ?? expandedNotif.title}
+                </p>
+              </div>
+              <button onClick={() => setExpandedNotif(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(185,190,200,0.4)', padding: 4, display: 'flex' }}>
+                <X size={18} />
+              </button>
+            </div>
+            {expandedNotif.metadata?.cancelled_by_name && (
+              <p style={{ fontSize: 12, color: 'rgba(185,190,200,0.5)', margin: '0 0 12px' }}>
+                Cancelado por <strong style={{ color: 'rgba(185,190,200,0.8)' }}>{expandedNotif.metadata.cancelled_by_name}</strong>
+              </p>
+            )}
+            <div style={{ padding: '12px 14px', background: 'rgba(239,68,68,0.05)', border: '1px solid rgba(239,68,68,0.15)', marginBottom: 16 }}>
+              <p style={{ fontSize: '0.58rem', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'rgba(239,68,68,0.6)', margin: '0 0 6px' }}>Motivo</p>
+              <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.75)', margin: 0, lineHeight: 1.6 }}>
+                {expandedNotif.metadata?.cancel_reason ?? 'Nenhum motivo informado.'}
+              </p>
+            </div>
+            <button onClick={() => setExpandedNotif(null)} style={{
+              width: '100%', padding: '12px', background: 'transparent',
+              border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(185,190,200,0.6)',
+              cursor: 'pointer', fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.1em',
+              textTransform: 'uppercase', fontFamily: 'inherit',
+            }}>Fechar</button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Painel de notificações mobile (bottom sheet) ── */}
+      {notifOpen && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 5000,
+          background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)',
+          display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
+        }} onClick={e => { if (e.target === e.currentTarget) setNotifOpen(false) }}>
+          <div style={{
+            background: '#0f1219',
+            border: '1px solid rgba(255,255,255,0.1)',
+            borderBottom: 'none',
+            maxHeight: '75vh',
+            display: 'flex', flexDirection: 'column',
+          }}>
+            {/* Header */}
+            <div style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.07)',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Bell size={14} style={{ color: '#d94e18' }} />
+                <span style={{ fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'rgba(185,190,200,0.6)' }}>
+                  Notificações
+                </span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                {notifList.length > 0 && (
+                  <button onClick={async () => {
+                    await supabase.from('notifications').delete().eq('profile_id', profile.id)
+                    setNotifList([]); setNotifCount(0)
+                  }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, color: 'rgba(185,190,200,0.35)', fontFamily: 'inherit' }}>
+                    Limpar
+                  </button>
+                )}
+                <button onClick={() => setNotifOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(185,190,200,0.4)', padding: 2, display: 'flex' }}>
+                  <X size={18} />
+                </button>
+              </div>
+            </div>
+            {/* Lista */}
+            <div style={{ flex: 1, overflowY: 'auto' }}>
+              {notifList.length === 0 ? (
+                <div style={{ padding: '40px 20px', textAlign: 'center' }}>
+                  <Bell size={28} style={{ color: 'rgba(185,190,200,0.1)', margin: '0 auto 10px', display: 'block' }} />
+                  <p style={{ fontSize: 13, color: 'rgba(185,190,200,0.35)', margin: 0 }}>Nenhuma notificação ainda</p>
+                </div>
+              ) : (
+                notifList.map((n: any) => {
+                  const hasCancelReason = n.metadata?.cancel_reason
+                  return (
+                    <div key={n.id} style={{
+                      padding: '14px 20px', borderBottom: '1px solid rgba(255,255,255,0.05)',
+                      background: n.read ? 'transparent' : 'rgba(217,78,24,0.05)',
+                      display: 'flex', gap: 10, alignItems: 'flex-start',
+                    }}>
+                      <div style={{ width: 28, height: 28, borderRadius: '50%', flexShrink: 0, background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: 1 }}>
+                        <AlertCircle size={13} style={{ color: '#ef4444' }} />
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <p style={{ fontSize: 13, color: n.read ? 'rgba(185,190,200,0.55)' : '#fff', margin: '0 0 3px', lineHeight: 1.4 }}>{n.body}</p>
+                        <p style={{ fontSize: 10, color: 'rgba(185,190,200,0.3)', margin: hasCancelReason ? '0 0 6px' : 0 }}>
+                          {new Date(n.created_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                        </p>
+                        {hasCancelReason && (
+                          <button onClick={() => { setExpandedNotif(n); setNotifOpen(false) }}
+                            style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)', color: '#ef4444', fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', padding: '3px 8px', cursor: 'pointer', fontFamily: 'inherit' }}>
+                            Ver motivo
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })
+              )}
+            </div>
+            {/* Safe area bottom */}
+            <div style={{ height: 8 }} />
+          </div>
+        </div>
+      )}
+
+      {/* ── Bottom Nav Bar ── */}
+      <nav style={{
+        position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 4000,
+        height: 64,
+        background: '#0b0808',
+        borderTop: '1px solid rgba(185,190,200,0.1)',
+        display: 'flex', alignItems: 'center',
+        fontFamily: 'var(--font-body), Inter, sans-serif',
+      }}>
+        {mobileLinks.map(({ href, label, icon: Icon }) => {
+          const active     = pathname === href || (href !== '/dashboard/company' && href !== '/dashboard/freelancer' && pathname.startsWith(href))
+          const isMessages = href === '/dashboard/messages'
+          const showBadge  = isMessages && unreadChats > 0
+
+          return (
+            <Link key={href} href={href} style={{
+              flex: 1, display: 'flex', flexDirection: 'column',
+              alignItems: 'center', justifyContent: 'center', gap: 4,
+              textDecoration: 'none', padding: '6px 4px',
+              color: active ? '#d94e18' : 'rgba(185,190,200,0.4)',
+              position: 'relative',
+            }}>
+              <div style={{ position: 'relative' }}>
+                <Icon size={20} />
+                {showBadge && (
+                  <span style={{
+                    position: 'absolute', top: -4, right: -6,
+                    width: 8, height: 8, borderRadius: '50%',
+                    background: '#d94e18', border: '1.5px solid #0b0808',
+                    boxShadow: '0 0 5px rgba(217,78,24,0.9)',
+                  }} />
+                )}
+              </div>
+              <span style={{ fontSize: 9, fontWeight: active ? 700 : 400, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                {label}
+              </span>
+              {active && (
+                <div style={{
+                  position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)',
+                  width: 24, height: 2, background: '#d94e18', borderRadius: '0 0 2px 2px',
+                }} />
+              )}
+            </Link>
+          )
+        })}
+
+        {/* Bell */}
+        <button onClick={() => { setNotifOpen(o => !o); if (!notifOpen && notifCount > 0) markAllRead() }}
+          style={{
+            flex: 1, display: 'flex', flexDirection: 'column',
+            alignItems: 'center', justifyContent: 'center', gap: 4,
+            background: 'transparent', border: 'none', cursor: 'pointer',
+            padding: '6px 4px', position: 'relative',
+            color: notifCount > 0 ? '#d94e18' : 'rgba(185,190,200,0.4)',
+            fontFamily: 'inherit',
+          }}>
+          <div style={{ position: 'relative' }}>
+            <Bell size={20} />
+            {notifCount > 0 && (
+              <span style={{
+                position: 'absolute', top: -5, right: -7,
+                minWidth: 16, height: 16, borderRadius: 999,
+                background: '#d94e18', color: '#fff',
+                fontSize: 9, fontWeight: 800,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                padding: '0 4px', border: '1.5px solid #0b0808',
+                lineHeight: 1,
+              }}>
+                {notifCount > 9 ? '9+' : notifCount}
+              </span>
+            )}
+          </div>
+          <span style={{ fontSize: 9, fontWeight: 400, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+            Notif.
+          </span>
+        </button>
+      </nav>
+    </>
   )
 }

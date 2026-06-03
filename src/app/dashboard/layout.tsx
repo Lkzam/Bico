@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { Sidebar } from '@/components/sidebar'
+import { Sidebar, MobileBottomNav } from '@/components/sidebar'
 import { TermsAcceptanceModal } from '@/components/TermsAcceptanceModal'
 import { Toaster } from 'sonner'
 
@@ -19,13 +19,14 @@ export default async function DashboardLayout({ children }: { children: React.Re
   if (!profile) redirect('/complete-profile')
 
   return (
-    <div style={{ display: 'flex', height: '100vh', background: '#0b0e17', fontFamily: 'var(--font-body), Inter, sans-serif' }}>
+    <div className="dash-layout" style={{ display: 'flex', height: '100vh', background: '#0b0e17', fontFamily: 'var(--font-body), Inter, sans-serif' }}>
       <Sidebar profile={profile} />
       <main style={{ flex: 1, overflowY: 'auto' }}>
-        <div style={{ maxWidth: 1100, margin: '0 auto', padding: '40px 48px' }}>
+        <div className="dash-main-pad" style={{ maxWidth: 1100, margin: '0 auto', padding: '40px 48px' }}>
           {children}
         </div>
       </main>
+      <MobileBottomNav profile={profile} />
       <Toaster position="top-right" richColors />
       <TermsAcceptanceModal alreadyAccepted={!!profile.terms_accepted_at} />
     </div>

@@ -117,7 +117,7 @@ export default function FreelancerJobsPage() {
           jobs.map((job: any, i: number) => {
             const status = statusMap[job.status] ?? { label: job.status, color: '#9ca3af' }
             return (
-              <div key={job.id} style={{
+              <div key={job.id} className="dash-job-row" style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                 padding: '20px 24px',
                 borderBottom: i < jobs.length - 1 ? '1px solid rgba(255,255,255,0.06)' : 'none',
@@ -132,7 +132,7 @@ export default function FreelancerJobsPage() {
                     {formatDeadline(job.deadline_hours) && ` · ${formatDeadline(job.deadline_hours)}`}
                   </p>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginLeft: 16, flexShrink: 0 }}>
+                <div className="dash-btn-group" style={{ display: 'flex', alignItems: 'center', gap: 12, marginLeft: 16, flexShrink: 0 }}>
                   <span style={{ fontSize: 16, fontWeight: 700, color: '#fff', fontFamily: 'var(--font-heading)' }}>
                     {formatCurrency(job.value)}
                   </span>

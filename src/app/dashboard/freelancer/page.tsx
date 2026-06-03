@@ -241,9 +241,9 @@ export default function FreelancerDashboard() {
       </div>
 
       {/* Stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 40 }}>
+      <div className="dash-stats-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 40 }}>
         {stats.map(({ icon: Icon, label, value, accent }) => (
-          <div key={label} style={{
+          <div key={label} className="dash-stat-card" style={{
             background: accent ? 'rgba(217,78,24,0.08)' : 'rgba(255,255,255,0.03)',
             border: `1px solid ${accent ? 'rgba(217,78,24,0.25)' : 'rgba(255,255,255,0.08)'}`,
             padding: '24px 20px',
@@ -254,7 +254,7 @@ export default function FreelancerDashboard() {
                 {label}
               </span>
             </div>
-            <p style={{ fontSize: 32, fontWeight: 800, color: '#fff', margin: 0, letterSpacing: '-0.02em', fontFamily: 'var(--font-heading)' }}>
+            <p className="dash-stat-value" style={{ fontSize: 32, fontWeight: 800, color: '#fff', margin: 0, letterSpacing: '-0.02em', fontFamily: 'var(--font-heading)' }}>
               {value}
             </p>
             {accent && balance > 0 && (
@@ -310,7 +310,7 @@ export default function FreelancerDashboard() {
             </div>
           ) : (
             availableJobs.map((job: any, i: number) => (
-              <div key={job.id} style={{
+              <div key={job.id} className="dash-avail-row" style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16,
                 padding: '20px 24px',
                 borderBottom: i < availableJobs.length - 1 ? '1px solid rgba(255,255,255,0.06)' : 'none',
@@ -334,7 +334,7 @@ export default function FreelancerDashboard() {
                     ))}
                   </div>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexShrink: 0 }}>
+                <div className="dash-avail-row-right" style={{ display: 'flex', alignItems: 'center', gap: 16, flexShrink: 0 }}>
                   <span style={{ fontSize: 18, fontWeight: 800, color: '#fff', fontFamily: 'var(--font-heading)', letterSpacing: '-0.02em' }}>
                     {formatCurrency(job.value)}
                   </span>
@@ -571,7 +571,7 @@ export default function FreelancerDashboard() {
             </div>
           ) : (
             myJobs.map((job: any, i: number) => (
-              <div key={job.id} style={{
+              <div key={job.id} className="dash-job-row" style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                 padding: '16px 20px',
                 borderBottom: i < myJobs.length - 1 ? '1px solid rgba(255,255,255,0.06)' : 'none',
@@ -585,7 +585,7 @@ export default function FreelancerDashboard() {
                     {job.profiles?.name} · {formatDate(job.created_at)}
                   </p>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div className="dash-job-row-right" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <span style={{ fontSize: 15, fontWeight: 700, color: '#fff', fontFamily: 'var(--font-heading)' }}>
                     {formatCurrency(job.value)}
                   </span>
