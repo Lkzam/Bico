@@ -27,21 +27,38 @@ export async function POST(req: Request) {
   if (job.status !== 'delivered')
     return NextResponse.json({ error: 'Trabalho ainda não foi entregue.' }, { status: 400 })
 
-  // Verifica se já existe cobrança pendente para esse job
+  // Verifica se já existe cobrança pendente e AINDA VÁLIDA para esse job.
+  // A cobrança Efí expira em 1h (expiracao: 3600). Servir um QR já expirado faz
+  // o banco do cliente recusar com "QR code falhou". Por isso só reutilizamos se
+  // ainda estiver dentro da validade; caso contrário, geramos uma nova.
   const { data: existingPayment } = await admin
     .from('payments')
-    .select('txid, qrcode, qrcode_image, total_value')
+    .select('id, txid, qrcode, qrcode_image, total_value, created_at')
     .eq('job_id', jobId)
     .eq('status', 'pending')
-    .single()
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
 
-  if (existingPayment) {
+  const CHARGE_TTL_MS    = 3600 * 1000     // expiração da cobrança = 1h
+  const SAFETY_BUFFER_MS = 5 * 60 * 1000   // margem de 5 min antes de expirar
+  const isStillValid =
+    !!existingPayment?.created_at &&
+    Date.now() - new Date(existingPayment.created_at).getTime() < CHARGE_TTL_MS - SAFETY_BUFFER_MS
+
+  if (existingPayment && isStillValid) {
     return NextResponse.json({
       txid: existingPayment.txid,
       qrcode: existingPayment.qrcode,
       imagemQrcode: existingPayment.qrcode_image,
       valor: existingPayment.total_value,
     })
+  }
+
+  // Cobrança antiga expirada: marca como expirada para não ser reutilizada
+  // (ignora erro caso o status 'expired' não exista no CHECK — o fluxo segue)
+  if (existingPayment && !isStillValid) {
+    await admin.from('payments').update({ status: 'expired' }).eq('id', existingPayment.id)
   }
 
   try {

@@ -1,5 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
+import { getPixCharge } from '@/lib/efi'
 import { NextResponse } from 'next/server'
 
 export async function GET(req: Request) {
@@ -31,7 +32,7 @@ export async function GET(req: Request) {
   // (impede que usuário A consulte status de pagamento do usuário B)
   const { data: job } = await admin
     .from('jobs')
-    .select('company_id, freelancer_id')
+    .select('id, company_id, freelancer_id, status')
     .eq('id', payment.job_id)
     .maybeSingle()
 
@@ -39,6 +40,44 @@ export async function GET(req: Request) {
 
   const hasAccess = profile.id === job.company_id || profile.id === job.freelancer_id
   if (!hasAccess) return NextResponse.json({ error: 'Sem permissão.' }, { status: 403 })
+
+  // ── Reconciliação ativa ──────────────────────────────────────────────────
+  // Se o banco ainda mostra "pending", não confiamos só no webhook da Efí:
+  // consultamos a cobrança direto na API da Efí. Se ela já foi paga (CONCLUIDA),
+  // aplicamos a mesma atualização de escrow que o webhook aplicaria.
+  // Isso torna o sistema auto-corretivo caso o webhook não tenha chegado.
+  if (payment.status === 'pending') {
+    try {
+      const charge = await getPixCharge(txid)
+
+      if (charge?.status === 'CONCLUIDA') {
+        const now = new Date().toISOString()
+        const endToEndId = Array.isArray(charge.pix) && charge.pix.length > 0
+          ? (charge.pix[0].endToEndId ?? null)
+          : null
+
+        await admin.from('payments').update({
+          status:         'paid_pending_approval',
+          paid_at:        now,
+          pix_end_to_end: endToEndId,
+        }).eq('id', payment.id).eq('status', 'pending')  // idempotente: só se ainda pending
+
+        // Só avança o job se ele ainda estiver em "delivered"
+        if (job.status === 'delivered') {
+          await admin.from('jobs').update({
+            status:              'payment_received',
+            payment_received_at: now,
+          }).eq('id', job.id).eq('status', 'delivered')
+        }
+
+        console.log(`[payments/status] Reconciliado via API Efí. txid=${txid} job=${job.id}`)
+        return NextResponse.json({ status: 'paid_pending_approval' })
+      }
+    } catch (err: any) {
+      // Falha ao consultar a Efí não deve quebrar o polling — devolve o status atual
+      console.error('[payments/status] Erro ao consultar cobrança na Efí:', err?.response?.data ?? err?.message ?? err)
+    }
+  }
 
   return NextResponse.json({ status: payment.status })
 }
