@@ -7,10 +7,28 @@ export default async function CompanyReviewsPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: profile } = await supabase
+  const { data: profile, error: profileError } = await supabase
     .from('profiles').select('*').eq('user_id', user.id).single()
   if (profile?.role !== 'company') redirect('/dashboard/freelancer')
 
+  // ─── DEBUG TEMPORÁRIO: captura o erro real da página de avaliações ───
+  try {
+    return await renderReviews(supabase, profile)
+  } catch (err: any) {
+    if (err?.digest?.startsWith?.('NEXT_REDIRECT')) throw err
+    return (
+      <div style={{ color: '#fff', padding: 24, fontFamily: 'monospace', whiteSpace: 'pre-wrap', fontSize: 12 }}>
+        <h2 style={{ color: '#ef4444' }}>DEBUG — erro na página de avaliações</h2>
+        <p><b>profileError:</b> {JSON.stringify(profileError)}</p>
+        <p><b>message:</b> {String(err?.message ?? err)}</p>
+        <p><b>name:</b> {String(err?.name ?? '')}</p>
+        <p><b>stack:</b>{'\n'}{String(err?.stack ?? '')}</p>
+      </div>
+    )
+  }
+}
+
+async function renderReviews(supabase: any, profile: any) {
   const { data: reviewsRaw } = await supabase
     .from('reviews')
     .select('*, reviewer:profiles!reviews_reviewer_id_fkey(name, role)')
@@ -19,14 +37,14 @@ export default async function CompanyReviewsPage() {
 
   // reviews.job_id aponta para job_archives.id (o job original já foi deletado).
   // Busca os títulos em job_archives e anexa em r.job.title.
-  const archiveIds = [...new Set((reviewsRaw ?? []).map(r => r.job_id).filter(Boolean))]
+  const archiveIds = [...new Set((reviewsRaw ?? []).map((r: any) => r.job_id).filter(Boolean))]
   let titleMap: Record<string, string> = {}
   if (archiveIds.length > 0) {
     const { data: archives } = await supabase
       .from('job_archives').select('id, title').in('id', archiveIds)
-    titleMap = Object.fromEntries((archives ?? []).map(a => [a.id, a.title]))
+    titleMap = Object.fromEntries((archives ?? []).map((a: any) => [a.id, a.title]))
   }
-  const reviews = (reviewsRaw ?? []).map(r => ({ ...r, job: { title: titleMap[r.job_id] ?? null } }))
+  const reviews = (reviewsRaw ?? []).map((r: any) => ({ ...r, job: { title: titleMap[r.job_id] ?? null } }))
 
   return (
     <div style={{ color: '#fff' }}>
