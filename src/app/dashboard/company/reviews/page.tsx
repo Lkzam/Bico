@@ -11,11 +11,22 @@ export default async function CompanyReviewsPage() {
     .from('profiles').select('*').eq('user_id', user.id).single()
   if (profile?.role !== 'company') redirect('/dashboard/freelancer')
 
-  const { data: reviews } = await supabase
+  const { data: reviewsRaw } = await supabase
     .from('reviews')
-    .select('*, reviewer:profiles!reviews_reviewer_id_fkey(name, role), job:jobs(title)')
+    .select('*, reviewer:profiles!reviews_reviewer_id_fkey(name, role)')
     .eq('reviewee_id', profile.id)
     .order('created_at', { ascending: false })
+
+  // reviews.job_id aponta para job_archives.id (o job original já foi deletado).
+  // Busca os títulos em job_archives e anexa em r.job.title.
+  const archiveIds = [...new Set((reviewsRaw ?? []).map(r => r.job_id).filter(Boolean))]
+  let titleMap: Record<string, string> = {}
+  if (archiveIds.length > 0) {
+    const { data: archives } = await supabase
+      .from('job_archives').select('id, title').in('id', archiveIds)
+    titleMap = Object.fromEntries((archives ?? []).map(a => [a.id, a.title]))
+  }
+  const reviews = (reviewsRaw ?? []).map(r => ({ ...r, job: { title: titleMap[r.job_id] ?? null } }))
 
   return (
     <div style={{ color: '#fff' }}>
