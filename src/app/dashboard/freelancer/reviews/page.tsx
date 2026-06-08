@@ -76,15 +76,16 @@ function ReviewList({ reviews, emptyMessage }: { reviews: any[], emptyMessage: s
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <style>{`
+        .review-card { transition: border-color 0.2s, background 0.2s; }
+        .review-card:hover { border-color: rgba(193,143,107,0.3) !important; background: rgba(193,143,107,0.05) !important; }
+      `}</style>
       {reviews.map((r: any) => (
-        <div key={r.id} style={{
+        <div key={r.id} className="review-card" style={{
           border: '1px solid rgba(255,255,255,0.08)',
           background: 'rgba(255,255,255,0.02)',
           padding: '24px',
-          transition: 'border-color 0.2s, background 0.2s',
-        }}
-          onMouseOver={e => { const el = e.currentTarget as HTMLDivElement; el.style.borderColor = 'rgba(193,143,107,0.3)'; el.style.background = 'rgba(193,143,107,0.05)' }}
-          onMouseOut={e => { const el = e.currentTarget as HTMLDivElement; el.style.borderColor = 'rgba(255,255,255,0.08)'; el.style.background = 'rgba(255,255,255,0.02)' }}>
+        }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, marginBottom: r.comment ? 16 : 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <div style={{
