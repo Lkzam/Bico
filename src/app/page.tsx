@@ -308,7 +308,7 @@ export default function Home() {
               letterSpacing: '-0.02em', color: '#fff',
               margin: '0 0 24px',
             }}>
-              Simples como<br />pedir um Uber
+              Simples como<br />apertar um botão
             </h2>
             <p style={{ fontSize: 'clamp(0.88rem, 1.1vw, 1rem)', lineHeight: 1.72, color: 'rgba(185,190,200,0.78)', maxWidth: 460, marginBottom: 40 }}>
               A empresa publica um trabalho com as habilidades necessárias.
@@ -345,7 +345,7 @@ export default function Home() {
           </h2>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 24 }}>
             {[
-              { icon: '⚡', title: 'Rápido como o Uber',    desc: 'Job aparece como notificação. O primeiro a aceitar fica com ele — sem fila, sem leilão.' },
+              { icon: '⚡', title: 'Rápido e sob demanda',  desc: 'Job aparece como notificação. O primeiro a aceitar fica com ele — sem fila, sem leilão.' },
               { icon: '🔒', title: 'Pagamento protegido',   desc: 'A empresa paga antes. O dinheiro só é liberado para o freelancer após a entrega aprovada.' },
               { icon: '⭐', title: 'Sistema de estrelas',   desc: 'Quanto melhor sua nota, mais jobs aparecem. Empresa ruim atrai freelancer ruim — e vice-versa.' },
               { icon: '📱', title: 'Saque via PIX',         desc: 'Informe sua chave PIX e saque quando quiser, direto do app. Sem criar conta em lugar nenhum.' },

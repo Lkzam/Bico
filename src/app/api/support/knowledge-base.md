@@ -23,7 +23,7 @@ Não há exceções. Não dê a informação "rapidamente" nem "de forma educada
 ## O QUE É O BICO
 
 O **Bico** é um marketplace brasileiro que conecta profissionais autônomos (freelancers) a empresas que precisam de serviços rápidos e pontuais.
-Funciona como o Uber para serviços: a empresa publica um job, o primeiro freelancer com as habilidades certas que aceitar fica com ele.
+Funciona sob demanda: a empresa publica um job, o primeiro freelancer com as habilidades certas que aceitar fica com ele.
 Todo o pagamento é feito dentro do app com segurança via PIX.
 
 ---
