@@ -257,4 +257,6 @@ EFIBANK_WEBHOOK_TOKEN=
 NEXT_PUBLIC_APP_URL=
 CRON_SECRET=
 GROQ_API_KEY=
+UPSTASH_REDIS_REST_URL=     # rate limiting (proxy.ts) — fallback p/ memória se vazio
+UPSTASH_REDIS_REST_TOKEN=
 ```

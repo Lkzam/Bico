@@ -1,15 +1,32 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { Ratelimit } from '@upstash/ratelimit'
+import { Redis } from '@upstash/redis'
 
-// ── Rate limiter em memória ───────────────────────────────────────────────────
-// Por instância (suficiente para deploys single-server/Vercel single-region).
-// Para produção multi-região, substitua por Upstash Redis.
+// ── Rate limiter ──────────────────────────────────────────────────────────────
+// Produção: Upstash Redis (contador compartilhado entre todas as instâncias).
+// Dev/local sem Upstash: fallback para Map em memória (por instância).
+const hasUpstash =
+  !!process.env.UPSTASH_REDIS_REST_URL && !!process.env.UPSTASH_REDIS_REST_TOKEN
+const redis = hasUpstash ? Redis.fromEnv() : null
+
+// Cria/cacheia um Ratelimit do Upstash por regra (sliding window)
+const upstashLimiters = new Map<string, Ratelimit>()
+function getUpstashLimiter(prefix: string, max: number, windowMs: number): Ratelimit {
+  let limiter = upstashLimiters.get(prefix)
+  if (!limiter) {
+    limiter = new Ratelimit({
+      redis: redis!,
+      limiter: Ratelimit.slidingWindow(max, `${Math.round(windowMs / 1000)} s`),
+      prefix: `rl:${prefix}`,
+      analytics: false,
+    })
+    upstashLimiters.set(prefix, limiter)
+  }
+  return limiter
+}
+
+// ── Fallback em memória (só usado quando Upstash não está configurado) ──────────
 const store = new Map<string, { count: number; resetAt: number }>()
-
-// Limpa entradas expiradas a cada 5 minutos
-setInterval(() => {
-  const now = Date.now()
-  for (const [k, v] of store) if (now > v.resetAt) store.delete(k)
-}, 5 * 60 * 1000)
 
 function getIP(req: NextRequest): string {
   return (
@@ -19,8 +36,8 @@ function getIP(req: NextRequest): string {
   )
 }
 
-/** Retorna true = permitido, false = bloqueado */
-function checkRateLimit(key: string, max: number, windowMs: number): boolean {
+/** Retorna true = permitido, false = bloqueado (fallback em memória) */
+function checkRateLimitMemory(key: string, max: number, windowMs: number): boolean {
   const now = Date.now()
   const entry = store.get(key)
   if (!entry || now > entry.resetAt) {
@@ -85,7 +102,7 @@ const SECURITY_HEADERS: Record<string, string> = {
   'Content-Security-Policy': CSP,
 }
 
-export function proxy(req: NextRequest) {
+export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl
   const ip = getIP(req)
 
@@ -99,7 +116,17 @@ export function proxy(req: NextRequest) {
       const group = pathname.split('/').slice(0, 4).join('/')
       const key   = `${ip}:${group}`
 
-      if (!checkRateLimit(key, rule.max, rule.windowMs)) {
+      let allowed: boolean
+      if (redis) {
+        // Upstash: contador global compartilhado entre todas as instâncias
+        const { success } = await getUpstashLimiter(rule.prefix, rule.max, rule.windowMs).limit(key)
+        allowed = success
+      } else {
+        // Fallback local (dev sem Upstash)
+        allowed = checkRateLimitMemory(key, rule.max, rule.windowMs)
+      }
+
+      if (!allowed) {
         return new NextResponse(
           JSON.stringify({ error: 'Muitas requisições. Tente novamente em instantes.' }),
           {
