@@ -45,15 +45,16 @@ export async function POST(req: Request) {
     await admin.from('account_private').update({ pix_key: pixKey }).eq('profile_id', profile.id)
   }
 
-  // Deduz saldo do freelancer ANTES de enviar (previne duplo saque)
-  const { error: balanceError } = await admin
-    .from('account_private')
-    .update({ balance: balance - parsedAmount })
-    .eq('profile_id', profile.id)
-    .eq('balance', balance) // optimistic lock
+  // Débito ATÔMICO (função no Postgres: decrementa só se balance >= valor).
+  // Previne duplo-saque e saldo negativo sem read-modify-write.
+  const { data: debited, error: debitError } = await admin
+    .rpc('withdraw_debit', { p_profile_id: profile.id, p_amount: parsedAmount })
 
-  if (balanceError) {
+  if (debitError) {
     return NextResponse.json({ error: 'Erro ao atualizar saldo. Tente novamente.' }, { status: 500 })
+  }
+  if (!debited) {
+    return NextResponse.json({ error: 'Saldo insuficiente.' }, { status: 400 })
   }
 
   // Cria registro de saque como processing
@@ -69,8 +70,8 @@ export async function POST(req: Request) {
     .single()
 
   if (wError || !withdrawal) {
-    // Reverte saldo se não conseguiu criar o registro
-    await admin.from('account_private').update({ balance: balance }).eq('profile_id', profile.id)
+    // Reverte saldo se não conseguiu criar o registro (incremento atômico)
+    await admin.rpc('credit_balance', { p_profile_id: profile.id, p_amount: parsedAmount })
     return NextResponse.json({ error: 'Erro ao registrar saque.' }, { status: 500 })
   }
 
@@ -124,7 +125,7 @@ export async function POST(req: Request) {
 
     // Reverte tudo: saldo e status do saque
     await Promise.all([
-      admin.from('account_private').update({ balance }).eq('profile_id', profile.id), // reverte para balance original
+      admin.rpc('credit_balance', { p_profile_id: profile.id, p_amount: parsedAmount }), // devolve o valor debitado
       admin.from('withdrawals').update({
         status:        'failed',
         error_message: JSON.stringify(efiError ?? err.message),

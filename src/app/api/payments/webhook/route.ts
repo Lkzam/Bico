@@ -57,17 +57,18 @@ export async function POST(req: Request) {
 
       // ✅ ESCROW: dinheiro fica retido — freelancer recebe apenas após aprovação da empresa
       const now = new Date().toISOString()
+      // Updates condicionados ao status atual → idempotente contra retries da Efí
       await Promise.all([
         admin.from('payments').update({
           status:          'paid_pending_approval',
           paid_at:         now,
           pix_end_to_end:  pix.endToEndId ?? null,
-        }).eq('id', payment.id),
+        }).eq('id', payment.id).eq('status', 'pending'),
 
         admin.from('jobs').update({
           status:               'payment_received',
           payment_received_at:  now,
-        }).eq('id', job.id),
+        }).eq('id', job.id).eq('status', 'delivered'),
       ])
 
       console.log(`[webhook] PIX recebido. txid=${txid} job=${job.id}`)

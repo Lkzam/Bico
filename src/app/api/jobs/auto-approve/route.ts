@@ -1,5 +1,4 @@
 import { createAdminClient } from '@/lib/supabase/admin'
-import { calcFreelancerReceives } from '@/lib/fees'
 import { archiveAndCleanJob } from '@/lib/archiveJob'
 import { secureCompare } from '@/lib/security'
 import { NextResponse } from 'next/server'
@@ -38,52 +37,25 @@ export async function GET(req: Request) {
 
   for (const job of expiredJobs) {
     try {
-      const { data: payment } = await admin
-        .from('payments')
-        .select('id, job_value')
-        .eq('job_id', job.id)
-        .eq('status', 'paid_pending_approval')
-        .single()
+      // ── 1. Aprovação + crédito ATÔMICOS e idempotentes (Postgres) ──────
+      const { data: processed, error: rpcError } = await admin
+        .rpc('approve_and_credit', { p_job_id: job.id, p_auto: true })
 
-      if (!payment) {
-        errors.push(`Job ${job.id}: pagamento não encontrado`)
+      if (rpcError) {
+        errors.push(`Job ${job.id}: ${rpcError.message}`)
+        console.error(`[auto-approve] RPC falhou no job ${job.id}:`, rpcError)
         continue
       }
 
-      const freelancerAmount = calcFreelancerReceives(payment.job_value)
-
-      const { data: priv } = await admin
-        .from('account_private').select('balance').eq('profile_id', job.freelancer_id).single()
-
-      const newBalance = (priv?.balance ?? 0) + freelancerAmount
-      const now = new Date().toISOString()
-
-      // ── 1. Credita freelancer + atualiza status ────────────────────────
-      await Promise.all([
-        admin.from('payments').update({
-          status: 'paid',
-          approved_at: now,
-          auto_approved: true,
-        }).eq('id', payment.id),
-
-        admin.from('jobs').update({
-          status: 'completed',
-          completed_at: now,
-          auto_approved_at: now,
-        }).eq('id', job.id),
-
-        admin.from('account_private').upsert({
-          profile_id: job.freelancer_id,
-          balance: newBalance,
-        }, { onConflict: 'profile_id' }),
-      ])
+      // null = já processado (ex.: empresa aprovou manualmente antes) → pula
+      if (!processed) continue
 
       approved++
 
       // ── 2. Arquiva + limpa (cada job individualmente) ──────────────────
       try {
         await archiveAndCleanJob(job.id)
-        console.log(`[auto-approve] Job ${job.id} arquivado. Freelancer recebeu R$ ${freelancerAmount}`)
+        console.log(`[auto-approve] Job ${job.id} aprovado e arquivado.`)
       } catch (archiveErr) {
         console.error(`[auto-approve] Falha ao arquivar job ${job.id}:`, archiveErr)
         errors.push(`Job ${job.id}: arquivado com erro de limpeza`)

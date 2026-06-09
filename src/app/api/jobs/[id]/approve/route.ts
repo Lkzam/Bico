@@ -1,6 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { calcFreelancerReceives } from '@/lib/fees'
 import { archiveAndCleanJob } from '@/lib/archiveJob'
 import { NextResponse } from 'next/server'
 
@@ -31,41 +30,21 @@ export async function POST(
   if (job.status !== 'payment_received')
     return NextResponse.json({ error: 'Este trabalho não está aguardando aprovação.' }, { status: 400 })
 
-  const { data: payment } = await admin
-    .from('payments')
-    .select('id, job_value, status')
-    .eq('job_id', jobId)
-    .eq('status', 'paid_pending_approval')
-    .single()
+  // ── 1. Aprovação + crédito ATÔMICOS e idempotentes (função no Postgres) ────
+  // Retorna o freelancer_id se processou, ou null se já tinha sido processado
+  // (duplo-clique ou corrida com o auto-approve do cron).
+  const { data: processedFreelancerId, error: rpcError } = await admin
+    .rpc('approve_and_credit', { p_job_id: jobId, p_auto: false })
 
-  if (!payment)
-    return NextResponse.json({ error: 'Pagamento não encontrado ou já processado.' }, { status: 404 })
+  if (rpcError) {
+    console.error(`[approve] Falha na RPC approve_and_credit (job ${jobId}):`, rpcError)
+    return NextResponse.json({ error: 'Erro ao aprovar entrega.' }, { status: 500 })
+  }
 
-  const freelancerAmount = calcFreelancerReceives(payment.job_value)
-
-  const { data: priv } = await admin
-    .from('account_private').select('balance').eq('profile_id', job.freelancer_id).single()
-
-  const newBalance = (priv?.balance ?? 0) + freelancerAmount
-  const now = new Date().toISOString()
-
-  // ── 1. Credita freelancer + atualiza status ──────────────────────────────
-  await Promise.all([
-    admin.from('payments').update({
-      status: 'paid',
-      approved_at: now,
-    }).eq('id', payment.id),
-
-    admin.from('jobs').update({
-      status: 'completed',
-      completed_at: now,
-    }).eq('id', jobId),
-
-    admin.from('account_private').upsert({
-      profile_id: job.freelancer_id,
-      balance: newBalance,
-    }, { onConflict: 'profile_id' }),
-  ])
+  // Já processado → idempotente, não credita de novo nem arquiva de novo.
+  if (!processedFreelancerId) {
+    return NextResponse.json({ ok: true, alreadyProcessed: true })
+  }
 
   // ── 2. Arquiva + limpa, retorna archiveId para exibir review imediatamente ─
   let archiveId: string | null = null
