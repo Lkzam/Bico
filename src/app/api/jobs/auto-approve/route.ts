@@ -52,10 +52,10 @@ export async function GET(req: Request) {
 
       const freelancerAmount = calcFreelancerReceives(payment.job_value)
 
-      const { data: freelancer } = await admin
-        .from('profiles').select('balance').eq('id', job.freelancer_id).single()
+      const { data: priv } = await admin
+        .from('account_private').select('balance').eq('profile_id', job.freelancer_id).single()
 
-      const newBalance = (freelancer?.balance ?? 0) + freelancerAmount
+      const newBalance = (priv?.balance ?? 0) + freelancerAmount
       const now = new Date().toISOString()
 
       // ── 1. Credita freelancer + atualiza status ────────────────────────
@@ -72,9 +72,10 @@ export async function GET(req: Request) {
           auto_approved_at: now,
         }).eq('id', job.id),
 
-        admin.from('profiles').update({
+        admin.from('account_private').upsert({
+          profile_id: job.freelancer_id,
           balance: newBalance,
-        }).eq('id', job.freelancer_id),
+        }, { onConflict: 'profile_id' }),
       ])
 
       approved++

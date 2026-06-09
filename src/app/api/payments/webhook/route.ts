@@ -35,7 +35,14 @@ export async function POST(req: Request) {
         .eq('txid', txid)
         .single()
 
-      if (!payment || payment.status !== 'pending') continue
+      if (!payment) {
+        console.warn(`[webhook] PIX recebido para txid desconhecido: ${txid}`)
+        continue
+      }
+      if (payment.status !== 'pending') {
+        console.warn(`[webhook] txid=${txid} já processado (status=${payment.status}) — ignorando duplicata`)
+        continue
+      }
 
       const { data: job } = await admin
         .from('jobs')
@@ -43,7 +50,10 @@ export async function POST(req: Request) {
         .eq('id', payment.job_id)
         .single()
 
-      if (!job || job.status !== 'delivered') continue
+      if (!job || job.status !== 'delivered') {
+        console.warn(`[webhook] txid=${txid}: job ${payment.job_id} em estado inesperado (${job?.status ?? 'inexistente'})`)
+        continue
+      }
 
       // ✅ ESCROW: dinheiro fica retido — freelancer recebe apenas após aprovação da empresa
       const now = new Date().toISOString()

@@ -51,13 +51,38 @@ const INTERNAL_PATTERNS = [
   '/api/withdraw/status',
 ]
 
+// ── Content-Security-Policy ─────────────────────────────────────────────────
+// Host do Supabase (REST + Realtime wss) extraído do env para o connect-src.
+const SUPABASE_HOST = (() => {
+  try { return new URL(process.env.NEXT_PUBLIC_SUPABASE_URL ?? '').host } catch { return '' }
+})()
+const CONNECT = SUPABASE_HOST
+  ? `'self' https://${SUPABASE_HOST} wss://${SUPABASE_HOST}`
+  : `'self'`
+
+// Nota: 'unsafe-inline'/'unsafe-eval' em script-src são necessários para o
+// bootstrap do Next.js sem nonce. Endurecer depois com nonce-based CSP.
+const CSP = [
+  "default-src 'self'",
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: blob: https:",
+  "font-src 'self' data:",
+  `connect-src ${CONNECT}`,
+  "frame-ancestors 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "object-src 'none'",
+].join('; ')
+
 // ── Headers de segurança ──────────────────────────────────────────────────────
 const SECURITY_HEADERS: Record<string, string> = {
-  'X-Frame-Options':        'DENY',
-  'X-Content-Type-Options': 'nosniff',
-  'X-XSS-Protection':       '1; mode=block',
-  'Referrer-Policy':        'strict-origin-when-cross-origin',
-  'Permissions-Policy':     'camera=(), microphone=(), geolocation=()',
+  'X-Frame-Options':         'DENY',
+  'X-Content-Type-Options':  'nosniff',
+  'X-XSS-Protection':        '1; mode=block',
+  'Referrer-Policy':         'strict-origin-when-cross-origin',
+  'Permissions-Policy':      'camera=(), microphone=(), geolocation=()',
+  'Content-Security-Policy': CSP,
 }
 
 export function proxy(req: NextRequest) {

@@ -43,7 +43,11 @@ export default function FreelancerDashboard() {
       const { data: prof } = await supabase
         .from('profiles').select('*').eq('user_id', user.id).single()
       if (!prof || prof.role !== 'freelancer') { router.push('/dashboard/company'); return }
-      setProfile(prof)
+
+      // Saldo vive em account_private (RLS: só o dono lê)
+      const { data: priv } = await supabase
+        .from('account_private').select('balance').eq('profile_id', prof.id).single()
+      setProfile({ ...prof, balance: priv?.balance ?? 0 })
 
       // My accepted jobs (ativos — concluídos são arquivados e deletados)
       const { data: jobs } = await supabase

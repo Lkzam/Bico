@@ -28,16 +28,21 @@ export async function POST(
   if (job.status !== 'open' || job.freelancer_id !== null)
     return NextResponse.json({ error: 'Este trabalho já foi aceito por outro freelancer.' }, { status: 409 })
 
-  // Lock the job (atomic update with conditions)
-  const { error: updateError, count } = await admin
+  // Lock the job (atomic update with conditions). .select() retorna as linhas
+  // afetadas — se vier vazio, outro freelancer ganhou a corrida.
+  const { data: locked, error: updateError } = await admin
     .from('jobs')
     .update({ status: 'in_progress', freelancer_id: freelancer.id })
     .eq('id', jobId)
     .eq('status', 'open')
     .is('freelancer_id', null)
+    .select('id')
 
   if (updateError)
     return NextResponse.json({ error: 'Erro ao aceitar trabalho: ' + updateError.message }, { status: 500 })
+
+  if (!locked || locked.length === 0)
+    return NextResponse.json({ error: 'Este trabalho já foi aceito por outro freelancer.' }, { status: 409 })
 
   // Check if a chat already exists for this job (e.g. retry after partial failure)
   const { data: existingChat } = await admin

@@ -22,9 +22,22 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Mensagens inválidas.' }, { status: 400 })
   }
 
+  // Limites anti-abuso/custo: no máx. 20 mensagens, cada uma com até 4000 chars,
+  // e considera apenas as 20 últimas (janela de contexto controlada).
+  const MAX_MESSAGES = 20
+  const MAX_CONTENT_CHARS = 4000
+
+  if (messages.length > 200) {
+    return NextResponse.json({ error: 'Conversa muito longa.' }, { status: 400 })
+  }
+
   const apiMessages = messages
-    .filter((m: any) => m.role && m.content)
-    .map((m: any) => ({ role: m.role as 'user' | 'assistant', content: String(m.content) }))
+    .filter((m: any) => m.role && m.content && (m.role === 'user' || m.role === 'assistant'))
+    .slice(-MAX_MESSAGES)
+    .map((m: any) => ({
+      role: m.role as 'user' | 'assistant',
+      content: String(m.content).slice(0, MAX_CONTENT_CHARS),
+    }))
 
   const encoder = new TextEncoder()
   const stream = new ReadableStream({

@@ -43,13 +43,12 @@ export async function POST(
     released_at: new Date().toISOString(),
   })
 
-  // Credita o saldo do freelancer
-  const { data: freelancer } = await admin
-    .from('profiles').select('balance').eq('id', job.freelancer_id).single()
+  // Credita o saldo do freelancer (em account_private)
+  const { data: priv } = await admin
+    .from('account_private').select('balance').eq('profile_id', job.freelancer_id).single()
 
-  await admin.from('profiles')
-    .update({ balance: (freelancer?.balance ?? 0) + freelancerAmount })
-    .eq('id', job.freelancer_id)
+  await admin.from('account_private')
+    .upsert({ profile_id: job.freelancer_id, balance: (priv?.balance ?? 0) + freelancerAmount }, { onConflict: 'profile_id' })
 
   // Marca o job como concluído
   await admin.from('jobs')

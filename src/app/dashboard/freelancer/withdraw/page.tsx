@@ -26,8 +26,12 @@ export default function WithdrawPage() {
       const { data: prof } = await supabase
         .from('profiles').select('*').eq('user_id', user.id).single()
       if (!prof || prof.role !== 'freelancer') { router.push('/dashboard'); return }
-      setProfile(prof)
-      if (prof.pix_key) setPixKey(prof.pix_key)
+
+      // Saldo e chave PIX vivem em account_private (RLS: só o dono lê)
+      const { data: priv } = await supabase
+        .from('account_private').select('balance, pix_key').eq('profile_id', prof.id).single()
+      setProfile({ ...prof, balance: priv?.balance ?? 0 })
+      if (priv?.pix_key) setPixKey(priv.pix_key)
 
       const { data: hist } = await supabase
         .from('withdrawals')

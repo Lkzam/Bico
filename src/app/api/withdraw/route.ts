@@ -16,10 +16,14 @@ export async function POST(req: Request) {
   if (!user) return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 })
 
   const { data: profile } = await supabase
-    .from('profiles').select('id, role, balance, pix_key').eq('user_id', user.id).single()
+    .from('profiles').select('id, role').eq('user_id', user.id).single()
 
   if (!profile || profile.role !== 'freelancer')
     return NextResponse.json({ error: 'Apenas freelancers podem sacar.' }, { status: 403 })
+
+  // Saldo e chave PIX agora vivem em account_private (dados sensíveis, RLS owner-only)
+  const { data: priv } = await admin
+    .from('account_private').select('balance, pix_key').eq('profile_id', profile.id).single()
 
   const body = await req.json()
   const { amount, pixKey } = body
@@ -32,20 +36,20 @@ export async function POST(req: Request) {
   if (!isValidPixKey(pixKey))
     return NextResponse.json({ error: 'Chave PIX inválida. Informe CPF, CNPJ, telefone, e-mail ou chave aleatória.' }, { status: 400 })
 
-  const balance = profile.balance ?? 0
+  const balance = priv?.balance ?? 0
   if (parsedAmount > balance)
     return NextResponse.json({ error: 'Saldo insuficiente.' }, { status: 400 })
 
-  // Salva chave PIX no perfil se informada
-  if (pixKey !== profile.pix_key) {
-    await admin.from('profiles').update({ pix_key: pixKey }).eq('id', profile.id)
+  // Salva chave PIX se informada (em account_private)
+  if (pixKey !== priv?.pix_key) {
+    await admin.from('account_private').update({ pix_key: pixKey }).eq('profile_id', profile.id)
   }
 
   // Deduz saldo do freelancer ANTES de enviar (previne duplo saque)
   const { error: balanceError } = await admin
-    .from('profiles')
+    .from('account_private')
     .update({ balance: balance - parsedAmount })
-    .eq('id', profile.id)
+    .eq('profile_id', profile.id)
     .eq('balance', balance) // optimistic lock
 
   if (balanceError) {
@@ -66,7 +70,7 @@ export async function POST(req: Request) {
 
   if (wError || !withdrawal) {
     // Reverte saldo se não conseguiu criar o registro
-    await admin.from('profiles').update({ balance: balance }).eq('id', profile.id)
+    await admin.from('account_private').update({ balance: balance }).eq('profile_id', profile.id)
     return NextResponse.json({ error: 'Erro ao registrar saque.' }, { status: 500 })
   }
 
@@ -120,7 +124,7 @@ export async function POST(req: Request) {
 
     // Reverte tudo: saldo e status do saque
     await Promise.all([
-      admin.from('profiles').update({ balance }).eq('id', profile.id), // reverte para balance original
+      admin.from('account_private').update({ balance }).eq('profile_id', profile.id), // reverte para balance original
       admin.from('withdrawals').update({
         status:        'failed',
         error_message: JSON.stringify(efiError ?? err.message),
