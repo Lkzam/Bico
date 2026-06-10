@@ -7,6 +7,7 @@ import { formatCurrency } from '@/lib/utils'
 import { Send, ArrowLeft, Paperclip, X, FileText, Image as ImageIcon, File } from 'lucide-react'
 import Link from 'next/link'
 import { toast } from 'sonner'
+import { ProfilePreviewModal } from '@/components/ProfilePreviewModal'
 
 export default function ChatPage() {
   const { chatId } = useParams<{ chatId: string }>()
@@ -22,6 +23,7 @@ export default function ChatPage() {
   const [sending, setSending] = useState(false)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [filePreview, setFilePreview] = useState<string | null>(null)
+  const [previewId, setPreviewId] = useState<string | null>(null)
 
   const lastMsgTimestampRef = useRef<string | null>(null)
   const profileRef = useRef<any>(null)
@@ -194,6 +196,7 @@ export default function ChatPage() {
   }
 
   const other = profile?.role === 'company' ? chat?.freelancer : chat?.company
+  const otherId = profile?.role === 'company' ? chat?.freelancer_id : chat?.company_id
 
   return (
     <div className="dash-chat-container" style={{ color: '#fff', display: 'flex', flexDirection: 'column', height: 'calc(100vh - 80px)' }}>
@@ -207,19 +210,31 @@ export default function ChatPage() {
           <ArrowLeft size={12} /> Voltar para mensagens
         </Link>
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-          <div style={{
-            width: 44, height: 44, borderRadius: '50%',
-            background: 'linear-gradient(135deg, #d94e18, #1e2535)',
-            border: '1px solid rgba(217,78,24,0.3)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 16, fontWeight: 700, color: '#fff', flexShrink: 0,
-          }}>
+          <button
+            onClick={() => otherId && setPreviewId(otherId)}
+            title="Ver perfil"
+            style={{
+              width: 44, height: 44, borderRadius: '50%', padding: 0,
+              background: 'linear-gradient(135deg, #d94e18, #1e2535)',
+              border: '1px solid rgba(217,78,24,0.3)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 16, fontWeight: 700, color: '#fff', flexShrink: 0,
+              cursor: 'pointer', fontFamily: 'inherit', transition: 'transform 0.15s, box-shadow 0.15s',
+            }}
+            onMouseOver={e => { (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 0 0 3px rgba(217,78,24,0.3)' }}
+            onMouseOut={e => { (e.currentTarget as HTMLButtonElement).style.boxShadow = 'none' }}
+          >
             {other?.name?.[0]?.toUpperCase() ?? '?'}
-          </div>
+          </button>
           <div>
-            <h1 style={{ fontSize: 18, fontWeight: 700, color: '#fff', margin: '0 0 2px' }}>
-              {other?.name ?? '...'}
-            </h1>
+            <button
+              onClick={() => otherId && setPreviewId(otherId)}
+              style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit' }}
+            >
+              <h1 style={{ fontSize: 18, fontWeight: 700, color: '#fff', margin: '0 0 2px' }}>
+                {other?.name ?? '...'}
+              </h1>
+            </button>
             {chat?.job && (
               <p style={{ fontSize: 12, color: 'rgba(185,190,200,0.4)', margin: 0 }}>
                 {chat.job.title} · {formatCurrency(chat.job.value)}
@@ -387,6 +402,11 @@ export default function ChatPage() {
           <Send size={16} />
         </button>
       </form>
+
+      {/* Popup de perfil da outra parte */}
+      {previewId && (
+        <ProfilePreviewModal profileId={previewId} onClose={() => setPreviewId(null)} />
+      )}
     </div>
   )
 }
