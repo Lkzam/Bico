@@ -9,6 +9,7 @@ import { calcFreelancerReceives, PLATFORM_FEE_FREELANCER } from '@/lib/fees'
 import Link from 'next/link'
 import { toast, Toaster } from 'sonner'
 import { ReviewModal } from '@/components/ReviewModal'
+import { DocumentGateModal } from '@/components/DocumentGateModal'
 
 const statusMap: Record<string, { label: string; color: string }> = {
   open:             { label: 'Aberto',           color: '#3b82f6' },
@@ -31,6 +32,7 @@ export default function FreelancerDashboard() {
   const [userTagIds, setUserTagIds] = useState<string[]>([])
   const [accepting, setAccepting] = useState<string | null>(null)
   const [confirmJob, setConfirmJob] = useState<any | null>(null)
+  const [docGate, setDocGate] = useState<any | null>(null)  // job aguardando CPF p/ aceitar
   const [cancelJobId, setCancelJobId] = useState<string | null>(null)
   const [cancelling, setCancelling] = useState(false)
   const userTagIdsRef = useRef<string[]>([])
@@ -165,15 +167,21 @@ export default function FreelancerDashboard() {
 
   async function confirmAccept() {
     if (!confirmJob) return
-    setAccepting(confirmJob.id)
+    const job = confirmJob
     setConfirmJob(null)
+    await doAccept(job)
+  }
 
-    const res = await fetch(`/api/jobs/${confirmJob.id}/accept`, { method: 'POST' })
+  async function doAccept(job: any) {
+    setAccepting(job.id)
+    const res = await fetch(`/api/jobs/${job.id}/accept`, { method: 'POST' })
     const json = await res.json()
 
     if (!res.ok) {
-      toast.error(json.error ?? 'Erro ao aceitar trabalho.')
       setAccepting(null)
+      // Sem CPF → abre o modal de cadastro e guarda o job para retomar
+      if (json.needsDocument) { setDocGate(job); return }
+      toast.error(json.error ?? 'Erro ao aceitar trabalho.')
       await loadAvailableJobs(userTagIds, profile.id)
       return
     }
@@ -225,6 +233,14 @@ export default function FreelancerDashboard() {
           reviewedName={pendingReview.companyName}
           reviewerRole="freelancer"
           onDone={() => setPendingReview(null)}
+        />
+      )}
+
+      {docGate && (
+        <DocumentGateModal
+          role="freelancer"
+          onClose={() => setDocGate(null)}
+          onDone={() => { const j = docGate; setDocGate(null); doAccept(j) }}
         />
       )}
 

@@ -5,11 +5,13 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { toast, Toaster } from 'sonner'
 import { Check, ArrowRight, Wifi, MapPin, Clock } from 'lucide-react'
+import { DocumentGateModal } from '@/components/DocumentGateModal'
 
 export default function PostJobPage() {
   const router = useRouter()
   const supabase = createClient()
   const [loading, setLoading] = useState(false)
+  const [docGate, setDocGate] = useState<string | null>(null)  // profileId aguardando documento
   const [allTags, setAllTags] = useState<any[]>([])
   const [selectedTagIds, setSelectedTagIds] = useState<Set<string>>(new Set())
   const [workType, setWorkType] = useState<'remote' | 'presential'>('remote')
@@ -42,10 +44,24 @@ export default function PostJobPage() {
       .from('profiles').select('id').eq('user_id', user.id).single()
     if (!profile) { toast.error('Perfil não encontrado.'); setLoading(false); return }
 
+    // Gate: empresa precisa de CPF ou CNPJ para publicar
+    const { data: priv } = await supabase
+      .from('account_private').select('cpf, cnpj').eq('profile_id', profile.id).single()
+    if (!priv?.cpf && !priv?.cnpj) {
+      setDocGate(profile.id)
+      setLoading(false)
+      return
+    }
+
+    await doPublish(profile.id)
+  }
+
+  async function doPublish(profileId: string) {
+    setLoading(true)
     const { data: job, error } = await supabase
       .from('jobs')
       .insert({
-        company_id: profile.id,
+        company_id: profileId,
         title: form.title,
         description: form.description,
         value: parseFloat(form.value),
@@ -87,6 +103,14 @@ export default function PostJobPage() {
   return (
     <div style={{ color: '#fff' }}>
       <Toaster position="top-right" richColors />
+
+      {docGate && (
+        <DocumentGateModal
+          role="company"
+          onClose={() => setDocGate(null)}
+          onDone={() => { const id = docGate; setDocGate(null); doPublish(id) }}
+        />
+      )}
 
       <div style={{ marginBottom: 40 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>

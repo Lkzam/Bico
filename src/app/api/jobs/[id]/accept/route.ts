@@ -18,6 +18,15 @@ export async function POST(
   if (!freelancer || freelancer.role !== 'freelancer')
     return NextResponse.json({ error: 'Somente freelancers podem aceitar trabalhos.' }, { status: 403 })
 
+  // Exige CPF cadastrado para aceitar trabalhos
+  const { data: priv } = await admin
+    .from('account_private').select('cpf').eq('profile_id', freelancer.id).single()
+  if (!priv?.cpf)
+    return NextResponse.json(
+      { error: 'Cadastre seu CPF para aceitar trabalhos.', needsDocument: true },
+      { status: 403 }
+    )
+
   // Fetch job
   const { data: job, error: jobError } = await admin
     .from('jobs').select('*').eq('id', jobId).single()
