@@ -27,6 +27,8 @@ export default async function CompanyReviewsPage() {
     titleMap = Object.fromEntries((archives ?? []).map(a => [a.id, a.title]))
   }
   const reviews = (reviewsRaw ?? []).map(r => ({ ...r, job: { title: titleMap[r.job_id] ?? null } }))
+  // Só exibe avaliações COM comentário (estrela-só fica só no total lá em cima)
+  const commentedReviews = reviews.filter((r: any) => r.comment && r.comment.trim())
 
   return (
     <div style={{ color: '#fff' }}>
@@ -63,16 +65,16 @@ export default async function CompanyReviewsPage() {
         </div>
       </div>
 
-      {!reviews || reviews.length === 0 ? (
+      {commentedReviews.length === 0 ? (
         <div style={{ border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.02)', padding: '64px 32px', textAlign: 'center' }}>
           <Star size={40} style={{ color: 'rgba(185,190,200,0.15)', margin: '0 auto 16px', display: 'block' }} />
           <p style={{ fontSize: 14, color: 'rgba(185,190,200,0.5)', margin: 0 }}>
-            Nenhuma avaliação recebida ainda. Conclua trabalhos para receber avaliações dos freelancers.
+            Nenhum comentário ainda. As avaliações com comentário aparecem aqui.
           </p>
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {reviews.map((r: any) => (
+          {commentedReviews.map((r: any) => (
             <div key={r.id} className="review-card" style={{
               border: '1px solid rgba(255,255,255,0.08)',
               background: 'rgba(255,255,255,0.02)',

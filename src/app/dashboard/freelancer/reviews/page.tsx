@@ -59,7 +59,10 @@ export default async function FreelancerReviewsPage() {
         </div>
       </div>
 
-      <ReviewList reviews={reviewsWithTitle} emptyMessage="Nenhuma avaliação recebida ainda. Conclua trabalhos para receber avaliações das empresas." />
+      <ReviewList
+        reviews={reviewsWithTitle.filter((r: any) => r.comment && r.comment.trim())}
+        emptyMessage="Nenhum comentário ainda. As avaliações com comentário aparecem aqui." />
+
     </div>
   )
 }
