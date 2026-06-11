@@ -1,6 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
-import { getPixCharge } from '@/lib/efi'
+import { getPaymentGateway } from '@/lib/payments'
 import { NextResponse } from 'next/server'
 
 export async function GET(req: Request) {
@@ -48,18 +48,15 @@ export async function GET(req: Request) {
   // Isso torna o sistema auto-corretivo caso o webhook não tenha chegado.
   if (payment.status === 'pending') {
     try {
-      const charge = await getPixCharge(txid)
+      const gateway = getPaymentGateway({ method: 'pix' })
+      const status = await gateway.getChargeStatus(txid)
 
-      if (charge?.status === 'CONCLUIDA') {
+      if (status === 'paid') {
         const now = new Date().toISOString()
-        const endToEndId = Array.isArray(charge.pix) && charge.pix.length > 0
-          ? (charge.pix[0].endToEndId ?? null)
-          : null
 
         await admin.from('payments').update({
           status:         'paid_pending_approval',
           paid_at:        now,
-          pix_end_to_end: endToEndId,
         }).eq('id', payment.id).eq('status', 'pending')  // idempotente: só se ainda pending
 
         // Só avança o job se ele ainda estiver em "delivered"
@@ -70,12 +67,12 @@ export async function GET(req: Request) {
           }).eq('id', job.id).eq('status', 'delivered')
         }
 
-        console.log(`[payments/status] Reconciliado via API Efí. txid=${txid} job=${job.id}`)
+        console.log(`[payments/status] Reconciliado via gateway. txid=${txid} job=${job.id}`)
         return NextResponse.json({ status: 'paid_pending_approval' })
       }
     } catch (err: any) {
-      // Falha ao consultar a Efí não deve quebrar o polling — devolve o status atual
-      console.error('[payments/status] Erro ao consultar cobrança na Efí:', err?.response?.data ?? err?.message ?? err)
+      // Falha ao consultar o PSP não deve quebrar o polling — devolve o status atual
+      console.error('[payments/status] Erro ao consultar cobrança no gateway:', err?.response?.data ?? err?.message ?? err)
     }
   }
 

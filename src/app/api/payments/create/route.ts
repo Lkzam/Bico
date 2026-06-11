@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { createPixCharge } from '@/lib/efi'
+import { getPaymentGateway } from '@/lib/payments'
+import { calcCompanyTotal } from '@/lib/fees'
 import { NextResponse } from 'next/server'
 
 export async function POST(req: Request) {
@@ -62,13 +63,19 @@ export async function POST(req: Request) {
   }
 
   try {
-    // Gera um txid único por tentativa de pagamento
-    const uniqueSuffix = Math.random().toString(36).substring(2, 10)
-    const charge = await createPixCharge({
-      jobId: job.id,
-      value: job.value,
-      companyName: profile.name,
-      uniqueSuffix,
+    // Gera txid único: base do jobId + sufixo aleatório (máx 35 chars, alfanumérico)
+    const base = job.id.replace(/-/g, '').substring(0, 26)
+    const suffix = Math.random().toString(36).substring(2, 10)
+    const txid = (base + suffix).substring(0, 35)
+
+    // Regra de negócio (taxa) é responsabilidade desta camada — gateway só cobra.
+    const totalValue = calcCompanyTotal(job.value)
+
+    const gateway = getPaymentGateway({ method: 'pix' })
+    const charge = await gateway.createPixCharge({
+      txid,
+      amount: totalValue,
+      metadata: { jobId: job.id, companyName: profile.name },
     })
 
     // Salva a cobrança no banco
@@ -77,10 +84,10 @@ export async function POST(req: Request) {
       txid: charge.txid,
       status: 'pending',
       job_value: job.value,
-      total_value: charge.valor,
+      total_value: charge.amount,
       qrcode: charge.qrcode,
-      qrcode_image: charge.imagemQrcode,
-      amount: charge.valor,
+      qrcode_image: charge.qrcodeImage,
+      amount: charge.amount,
       fee: 0,
       freelancer_amount: 0,
     })
@@ -93,9 +100,15 @@ export async function POST(req: Request) {
       )
     }
 
-    return NextResponse.json(charge)
+    // Resposta compatível com o cliente atual (qrcode/imagemQrcode/valor)
+    return NextResponse.json({
+      txid: charge.txid,
+      qrcode: charge.qrcode,
+      imagemQrcode: charge.qrcodeImage,
+      valor: charge.amount,
+    })
   } catch (err: any) {
-    console.error('Erro ao criar cobrança Efí:', err?.response?.data ?? err.message)
+    console.error('[payments/create] Erro ao criar cobrança:', err?.response?.data ?? err.message)
     return NextResponse.json(
       { error: 'Erro ao gerar cobrança PIX. Tente novamente.' },
       { status: 500 }

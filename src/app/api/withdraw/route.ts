@@ -1,12 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { NextResponse } from 'next/server'
-import { getAccessToken, getHttpsAgent } from '@/lib/efi'
+import { getPaymentGateway } from '@/lib/payments'
 import { isValidPixKey } from '@/lib/security'
-import axios from 'axios'
-
-const SANDBOX  = process.env.EFIBANK_SANDBOX === 'true'
-const BASE_URL = SANDBOX ? 'https://pix-h.api.efipay.com.br' : 'https://pix.api.efipay.com.br'
 
 export async function POST(req: Request) {
   const supabase = await createClient()
@@ -75,64 +71,32 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Erro ao registrar saque.' }, { status: 500 })
   }
 
-  // Envia PIX via Efí Bank
-  try {
-    const token = await getAccessToken()
-    const agent = getHttpsAgent()
+  // Envia PIX via gateway (hoje Efí; amanhã, qualquer PSP que implementar a interface)
+  const idEnvio = withdrawal.id.replace(/-/g, '').substring(0, 35)
+  const gateway = getPaymentGateway({ method: 'pix' })
+  const result = await gateway.sendPix({
+    idEnvio,
+    amount: parsedAmount,
+    destinationKey: pixKey.trim(),
+    description: 'Saque Bico',
+  })
 
-    // txid único para o saque (máx 35 chars, apenas alfanumérico)
-    const txid = withdrawal.id.replace(/-/g, '').substring(0, 35)
-
-    // Usa a chave PIX exatamente como o usuário informou
-    const chave = pixKey.trim()
-
-    // Efí Bank v3: valor como string, pagador = sua chave PIX, favorecido = chave do freelancer
-    const pixBody = {
-      valor:    parsedAmount.toFixed(2),
-      pagador:  {
-        chave:        process.env.EFIBANK_PIX_KEY!,
-        infoPagador:  'Saque Bico',
-      },
-      favorecido: {
-        chave,
-      },
-    }
-
-    // Não loga pixBody — contém a chave PIX da plataforma (dado sensível)
-    const { data: pixRes } = await axios.put(
-      `${BASE_URL}/v3/gn/pix/${txid}`,
-      pixBody,
-      {
-        headers: {
-          Authorization:  `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        httpsAgent: agent,
-      }
-    )
-
-    // Atualiza saque como concluído
+  if (result.ok) {
     await admin.from('withdrawals').update({
       status:       'completed',
       processed_at: new Date().toISOString(),
     }).eq('id', withdrawal.id)
-
     return NextResponse.json({ ok: true, message: 'Saque enviado com sucesso!' })
-
-  } catch (err: any) {
-    const efiError = err?.response?.data
-    console.error('[withdraw] Erro ao enviar PIX:', efiError ?? err.message)
-
-    // Reverte tudo: saldo e status do saque
-    await Promise.all([
-      admin.rpc('credit_balance', { p_profile_id: profile.id, p_amount: parsedAmount }), // devolve o valor debitado
-      admin.from('withdrawals').update({
-        status:        'failed',
-        error_message: JSON.stringify(efiError ?? err.message),
-      }).eq('id', withdrawal.id),
-    ])
-
-    const msg = efiError?.mensagem ?? efiError?.message ?? 'Erro ao enviar PIX. Tente novamente.'
-    return NextResponse.json({ error: msg }, { status: 500 })
   }
+
+  // Reverte tudo: saldo (RPC atômica) e marca saque como failed
+  console.error('[withdraw] Erro ao enviar PIX:', result.error)
+  await Promise.all([
+    admin.rpc('credit_balance', { p_profile_id: profile.id, p_amount: parsedAmount }),
+    admin.from('withdrawals').update({
+      status:        'failed',
+      error_message: result.error,
+    }).eq('id', withdrawal.id),
+  ])
+  return NextResponse.json({ error: result.error }, { status: 500 })
 }
