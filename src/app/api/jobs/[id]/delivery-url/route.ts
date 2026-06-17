@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { isAdminUserId } from '@/lib/admin'
 import { NextResponse } from 'next/server'
 
 export async function GET(
@@ -22,12 +23,14 @@ export async function GET(
 
   if (!job) return NextResponse.json({ error: 'Trabalho não encontrado.' }, { status: 404 })
 
-  const isCompany = profile.role === 'company' && job.company_id === profile.id
+  const isCompany    = profile.role === 'company'    && job.company_id    === profile.id
   const isFreelancer = profile.role === 'freelancer' && job.freelancer_id === profile.id
-  if (!isCompany && !isFreelancer)
+  const isAdmin      = isAdminUserId(user.id)
+  if (!isCompany && !isFreelancer && !isAdmin)
     return NextResponse.json({ error: 'Sem permissão.' }, { status: 403 })
 
-  // Empresa só pode baixar após o pagamento ser confirmado (escrow)
+  // Empresa só pode baixar após o pagamento ser confirmado (escrow).
+  // Admin pode baixar a qualquer hora (precisa pra arbitrar disputas).
   const PAID_STATUSES = ['payment_received', 'completed', 'disputed']
   if (isCompany && !PAID_STATUSES.includes(job.status))
     return NextResponse.json({ error: 'Arquivo disponível apenas após o pagamento.' }, { status: 403 })

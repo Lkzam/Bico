@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { notifyAdminNewDispute } from '@/lib/email'
 import { NextResponse } from 'next/server'
 
 export async function POST(
@@ -20,7 +21,11 @@ export async function POST(
 
   const { data: job } = await admin
     .from('jobs')
-    .select('id, company_id, status')
+    .select(`
+      id, company_id, freelancer_id, status, title, value,
+      company:profiles!jobs_company_id_fkey(name),
+      freelancer:profiles!jobs_freelancer_id_fkey(name)
+    `)
     .eq('id', jobId)
     .single()
 
@@ -47,6 +52,22 @@ export async function POST(
       disputed_at: new Date().toISOString(),
     }).eq('id', jobId),
   ])
+
+  // Notifica admin por email (best-effort; falha não bloqueia a disputa)
+  const company    = job.company    as { name?: string } | null
+  const freelancer = job.freelancer as { name?: string } | null
+  try {
+    await notifyAdminNewDispute({
+      jobId:          job.id,
+      jobTitle:       job.title,
+      jobValue:       Number(job.value),
+      companyName:    company?.name ?? 'Empresa',
+      freelancerName: freelancer?.name ?? 'Freelancer',
+      reason:         reason || null,
+    })
+  } catch (err) {
+    console.error('[dispute] Falha ao notificar admin por email:', err)
+  }
 
   return NextResponse.json({ ok: true })
 }

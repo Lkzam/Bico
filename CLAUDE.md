@@ -259,4 +259,8 @@ CRON_SECRET=
 GROQ_API_KEY=
 UPSTASH_REDIS_REST_URL=     # rate limiting (proxy.ts) — fallback p/ memória se vazio
 UPSTASH_REDIS_REST_TOKEN=
+ADMIN_USER_IDS=             # CSV de auth.users.id que acessa /dashboard/admin
+RESEND_API_KEY=             # email transacional (resend.com — free 3k/mês)
+ADMIN_EMAIL=                # destinatário das notificações de disputa
+EMAIL_FROM=                 # remetente verificado no Resend
 ```

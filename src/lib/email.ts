@@ -1,0 +1,137 @@
+// Helper de envio de email transacional.
+//
+// Provider: Resend (https://resend.com).
+// Tier free: 3k emails/mês, 100/dia. Sem cartão.
+//
+// Variáveis necessárias:
+//   RESEND_API_KEY     — chave criada no painel do Resend
+//   ADMIN_EMAIL        — email que recebe notificações (você)
+//   EMAIL_FROM         — endereço remetente verificado no Resend
+//                        (ex: "Bico <noreply@seudominio.com>")
+//
+// Se RESEND_API_KEY não estiver configurado, sendEmail() vira no-op silencioso
+// (loga warning, não falha). Útil em dev local sem Resend.
+
+import { Resend } from 'resend'
+
+let cachedClient: Resend | null = null
+
+function getClient(): Resend | null {
+  if (cachedClient) return cachedClient
+  const apiKey = process.env.RESEND_API_KEY
+  if (!apiKey) return null
+  cachedClient = new Resend(apiKey)
+  return cachedClient
+}
+
+export interface SendEmailParams {
+  to: string | string[]
+  subject: string
+  html: string
+  text?: string
+}
+
+export async function sendEmail(params: SendEmailParams): Promise<{ ok: boolean; error?: string }> {
+  const client = getClient()
+  if (!client) {
+    console.warn('[email] RESEND_API_KEY não configurado — email não enviado:', params.subject)
+    return { ok: false, error: 'email-not-configured' }
+  }
+
+  const from = process.env.EMAIL_FROM ?? 'Bico <onboarding@resend.dev>'
+
+  try {
+    const { error } = await client.emails.send({
+      from,
+      to: params.to,
+      subject: params.subject,
+      html: params.html,
+      text: params.text,
+    })
+    if (error) {
+      console.error('[email] Resend retornou erro:', error)
+      return { ok: false, error: error.message }
+    }
+    return { ok: true }
+  } catch (err: any) {
+    console.error('[email] Falha ao enviar:', err?.message ?? err)
+    return { ok: false, error: err?.message ?? String(err) }
+  }
+}
+
+/** Notifica admin que uma disputa foi aberta. */
+export async function notifyAdminNewDispute(params: {
+  jobId: string
+  jobTitle: string
+  jobValue: number
+  companyName: string
+  freelancerName: string
+  reason: string | null
+}): Promise<void> {
+  const adminEmail = process.env.ADMIN_EMAIL
+  if (!adminEmail) {
+    console.warn('[email] ADMIN_EMAIL não configurado — disputa não notificada por email')
+    return
+  }
+
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
+  const link   = `${appUrl}/dashboard/admin/disputes`
+  const valor  = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(params.jobValue)
+
+  const html = `
+<!doctype html>
+<html lang="pt-BR">
+<head><meta charset="utf-8"></head>
+<body style="font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;background:#0b0e17;color:#fff;padding:24px;">
+  <div style="max-width:520px;margin:0 auto;background:#0f1219;border:1px solid rgba(245,158,11,0.3);padding:28px;">
+    <div style="font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:#f59e0b;font-weight:700;margin-bottom:8px;">
+      Bico · Admin
+    </div>
+    <h1 style="font-size:20px;margin:0 0 16px;color:#fff;">Nova disputa aberta</h1>
+    <p style="margin:0 0 14px;color:#cbd5e1;line-height:1.5;">
+      A empresa <strong>${escapeHtml(params.companyName)}</strong> contestou a entrega do trabalho
+      <strong>${escapeHtml(params.jobTitle)}</strong> (${valor}) feita por
+      <strong>${escapeHtml(params.freelancerName)}</strong>.
+    </p>
+    ${params.reason
+      ? `<div style="padding:14px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);margin-bottom:18px;">
+           <div style="font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#94a3b8;margin-bottom:6px;">Motivo</div>
+           <div style="font-size:13px;color:#e2e8f0;font-style:italic;line-height:1.5;">"${escapeHtml(params.reason)}"</div>
+         </div>`
+      : ''
+    }
+    <a href="${link}" style="display:inline-block;padding:12px 22px;background:#d94e18;color:#fff;text-decoration:none;font-weight:700;font-size:12px;letter-spacing:.12em;text-transform:uppercase;">
+      Abrir painel de arbitragem
+    </a>
+    <p style="margin:20px 0 0;font-size:11px;color:#64748b;">
+      Job ID: ${params.jobId}
+    </p>
+  </div>
+</body>
+</html>`
+
+  const text = `Nova disputa aberta no Bico
+
+Empresa: ${params.companyName}
+Freelancer: ${params.freelancerName}
+Trabalho: ${params.jobTitle} (${valor})
+${params.reason ? `Motivo: ${params.reason}\n` : ''}
+Abra o painel: ${link}
+Job ID: ${params.jobId}`
+
+  await sendEmail({
+    to: adminEmail,
+    subject: `[Bico] Disputa aberta — ${params.jobTitle}`,
+    html,
+    text,
+  })
+}
+
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
