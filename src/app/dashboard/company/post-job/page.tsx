@@ -15,6 +15,7 @@ export default function PostJobPage() {
   const [allTags, setAllTags] = useState<any[]>([])
   const [selectedTagIds, setSelectedTagIds] = useState<Set<string>>(new Set())
   const [workType, setWorkType] = useState<'remote' | 'presential'>('remote')
+  const [mode, setMode] = useState<'fast' | 'proposal'>('fast')
   const [deadlineUnit, setDeadlineUnit] = useState<'hours' | 'days'>('hours')
   const [form, setForm] = useState({ title: '', description: '', value: '', deadline_hours: '', address: '' })
 
@@ -70,6 +71,7 @@ export default function PostJobPage() {
           : null,
         work_type: workType,
         address: workType === 'presential' ? form.address.trim() : null,
+        mode,
         status: 'open',
       })
       .select().single()
@@ -137,6 +139,45 @@ export default function PostJobPage() {
             </p>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+
+              {/* Modo de recebimento — fast (1º aceita) ou proposal (eu escolho) */}
+              <div>
+                <label style={labelStyle}>Como você quer receber freelancers?</label>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  {([
+                    { value: 'fast',     label: 'Imediato',        sub: 'O 1º freelancer que aceitar fica com o trabalho' },
+                    { value: 'proposal', label: 'Por propostas',   sub: 'Receba propostas e escolha o melhor' },
+                  ] as { value: 'fast' | 'proposal'; label: string; sub: string }[]).map(opt => {
+                    const active = mode === opt.value
+                    return (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => setMode(opt.value)}
+                        style={{
+                          display: 'flex', flexDirection: 'column', alignItems: 'flex-start',
+                          padding: '12px 14px', textAlign: 'left',
+                          background: active ? 'rgba(217,78,24,0.12)' : 'rgba(255,255,255,0.03)',
+                          border: `1px solid ${active ? '#d94e18' : 'rgba(255,255,255,0.1)'}`,
+                          cursor: 'pointer', transition: 'all 0.15s',
+                          fontFamily: 'inherit',
+                        }}>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: active ? '#fff' : 'rgba(185,190,200,0.7)', marginBottom: 4 }}>
+                          {opt.label}
+                        </div>
+                        <div style={{ fontSize: 11, color: active ? 'rgba(212,120,58,0.85)' : 'rgba(185,190,200,0.4)', lineHeight: 1.4 }}>
+                          {opt.sub}
+                        </div>
+                      </button>
+                    )
+                  })}
+                </div>
+                {mode === 'proposal' && (
+                  <p style={{ fontSize: 11.5, color: 'rgba(185,190,200,0.55)', margin: '10px 2px 0', lineHeight: 1.5 }}>
+                    O valor abaixo será exibido como <strong>orçamento sugerido</strong>. Cada freelancer pode propor outro valor e prazo.
+                  </p>
+                )}
+              </div>
 
               {/* Presencial / Remoto */}
               <div>
@@ -232,7 +273,9 @@ export default function PostJobPage() {
 
               <div className="dash-inline-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                 <div>
-                  <label style={labelStyle}>Valor (R$)</label>
+                  <label style={labelStyle}>
+                    {mode === 'proposal' ? 'Orçamento sugerido (R$)' : 'Valor (R$)'}
+                  </label>
                   <input
                     type="number" min="10" step="0.01" placeholder="150.00"
                     value={form.value}

@@ -110,6 +110,7 @@ export default function FreelancerDashboard() {
       }, async (payload) => {
         const newJob = payload.new as any
         if (newJob.status !== 'open') return
+        if (newJob.mode === 'proposal') return  // até a Fase 2B, jobs por proposta não notificam
 
         // Check if any of its tags match ours
         const { data: jt } = await supabase
@@ -159,6 +160,7 @@ export default function FreelancerDashboard() {
       .select('*, profiles!jobs_company_id_fkey(name), job_tags(tags(name))')
       .in('id', jobIds)
       .eq('status', 'open')
+      .eq('mode', 'fast')        // jobs em modo 'proposal' aparecem só após a Fase 2B
       .is('freelancer_id', null)
       .order('created_at', { ascending: false })
     setAvailableJobs(jobs ?? [])

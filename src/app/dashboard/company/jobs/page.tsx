@@ -330,6 +330,19 @@ export default function CompanyJobsPage() {
                       {status.label}
                     </span>
 
+                    {/* Badge do modo (só quando job ainda está aberto em modo proposta) */}
+                    {job.mode === 'proposal' && job.status === 'open' && (
+                      <span style={{
+                        fontSize: '0.58rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase',
+                        padding: '4px 10px',
+                        background: 'rgba(167,139,250,0.12)',
+                        border: '1px solid rgba(167,139,250,0.4)',
+                        color: '#a78bfa', whiteSpace: 'nowrap',
+                      }}>
+                        Por propostas
+                      </span>
+                    )}
+
                     {/* Botão Pagar (quando entregue) */}
                     {job.status === 'delivered' && (
                       <button
