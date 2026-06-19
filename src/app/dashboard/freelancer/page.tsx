@@ -4,12 +4,13 @@ import { useEffect, useState, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { formatCurrency, formatDate } from '@/lib/utils'
-import { Wallet, Star, CheckCircle, Clock, ArrowRight, Zap, Tag, X, Wifi, MapPin, Trash2 } from 'lucide-react'
+import { Wallet, Star, CheckCircle, Clock, ArrowRight, Zap, Tag, X, Wifi, MapPin, Trash2, Send } from 'lucide-react'
 import { calcFreelancerReceives, PLATFORM_FEE_FREELANCER } from '@/lib/fees'
 import Link from 'next/link'
 import { toast, Toaster } from 'sonner'
 import { ReviewModal } from '@/components/ReviewModal'
 import { DocumentGateModal } from '@/components/DocumentGateModal'
+import { ProposalModal } from '@/components/ProposalModal'
 
 const statusMap: Record<string, { label: string; color: string }> = {
   open:             { label: 'Aberto',           color: '#3b82f6' },
@@ -33,6 +34,8 @@ export default function FreelancerDashboard() {
   const [accepting, setAccepting] = useState<string | null>(null)
   const [confirmJob, setConfirmJob] = useState<any | null>(null)
   const [docGate, setDocGate] = useState<any | null>(null)  // job aguardando CPF p/ aceitar
+  const [proposalJob, setProposalJob] = useState<any | null>(null)  // job para enviar proposta
+  const [pendingProposalAfterDoc, setPendingProposalAfterDoc] = useState<any | null>(null) // retoma modal de proposta após cadastrar CPF
   const [cancelJobId, setCancelJobId] = useState<string | null>(null)
   const [cancelling, setCancelling] = useState(false)
   const userTagIdsRef = useRef<string[]>([])
@@ -110,7 +113,6 @@ export default function FreelancerDashboard() {
       }, async (payload) => {
         const newJob = payload.new as any
         if (newJob.status !== 'open') return
-        if (newJob.mode === 'proposal') return  // até a Fase 2B, jobs por proposta não notificam
 
         // Check if any of its tags match ours
         const { data: jt } = await supabase
@@ -119,8 +121,11 @@ export default function FreelancerDashboard() {
         const hasMatch = jobTagIds.some(id => userTagIdsRef.current.includes(id))
 
         if (hasMatch) {
+          const isProposal = newJob.mode === 'proposal'
           toast.success(`Novo trabalho disponível: "${newJob.title}"`, {
-            description: `${formatCurrency(newJob.value)} · Seja o primeiro a aceitar!`,
+            description: isProposal
+              ? `${formatCurrency(newJob.value)} sugerido · Envie sua proposta!`
+              : `${formatCurrency(newJob.value)} · Seja o primeiro a aceitar!`,
             duration: 8000,
             action: { label: 'Ver', onClick: () => window.scrollTo({ top: 0, behavior: 'smooth' }) },
           })
@@ -160,10 +165,23 @@ export default function FreelancerDashboard() {
       .select('*, profiles!jobs_company_id_fkey(name), job_tags(tags(name))')
       .in('id', jobIds)
       .eq('status', 'open')
-      .eq('mode', 'fast')        // jobs em modo 'proposal' aparecem só após a Fase 2B
       .is('freelancer_id', null)
       .order('created_at', { ascending: false })
-    setAvailableJobs(jobs ?? [])
+
+    // Esconde jobs 'proposal' onde este freelancer já tem proposta pendente
+    const proposalJobIds = (jobs ?? []).filter(j => j.mode === 'proposal').map(j => j.id)
+    let pendingSet = new Set<string>()
+    if (proposalJobIds.length > 0) {
+      const { data: pending } = await supabase
+        .from('proposals')
+        .select('job_id')
+        .eq('freelancer_id', profileId)
+        .eq('status', 'pending')
+        .in('job_id', proposalJobIds)
+      pendingSet = new Set((pending ?? []).map((p: any) => p.job_id))
+    }
+
+    setAvailableJobs((jobs ?? []).filter(j => !pendingSet.has(j.id)))
   }
 
 
@@ -241,8 +259,36 @@ export default function FreelancerDashboard() {
       {docGate && (
         <DocumentGateModal
           role="freelancer"
-          onClose={() => setDocGate(null)}
-          onDone={() => { const j = docGate; setDocGate(null); doAccept(j) }}
+          onClose={() => { setDocGate(null); setPendingProposalAfterDoc(null) }}
+          onDone={() => {
+            const acceptJob = docGate
+            setDocGate(null)
+            // Se veio do fluxo de proposta, reabre o ProposalModal; senão, retoma o accept
+            if (pendingProposalAfterDoc) {
+              const propJob = pendingProposalAfterDoc
+              setPendingProposalAfterDoc(null)
+              setProposalJob(propJob)
+            } else {
+              doAccept(acceptJob)
+            }
+          }}
+        />
+      )}
+
+      {proposalJob && profile && (
+        <ProposalModal
+          job={proposalJob}
+          onClose={() => setProposalJob(null)}
+          onSent={async () => {
+            setProposalJob(null)
+            await loadAvailableJobs(userTagIds, profile.id)
+          }}
+          onNeedsDocument={() => {
+            const j = proposalJob
+            setProposalJob(null)
+            setPendingProposalAfterDoc(j)  // marca pra reabrir após cadastrar
+            setDocGate(j)
+          }}
         />
       )}
 
@@ -357,25 +403,49 @@ export default function FreelancerDashboard() {
                   </div>
                 </div>
                 <div className="dash-avail-row-right" style={{ display: 'flex', alignItems: 'center', gap: 16, flexShrink: 0 }}>
-                  <span style={{ fontSize: 18, fontWeight: 800, color: '#fff', fontFamily: 'var(--font-heading)', letterSpacing: '-0.02em' }}>
-                    {formatCurrency(job.value)}
-                  </span>
-                  <button
-                    onClick={() => setConfirmJob(job)}
-                    disabled={!!accepting}
-                    style={{
-                      padding: '10px 20px',
-                      background: accepting ? 'rgba(217,78,24,0.4)' : '#d94e18',
-                      color: '#fff', border: 'none',
-                      cursor: accepting ? 'not-allowed' : 'pointer',
-                      fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase',
-                      fontFamily: 'inherit', transition: 'background 0.15s',
-                      display: 'flex', alignItems: 'center', gap: 6,
-                    }}
-                    onMouseOver={e => { if (!accepting) (e.currentTarget as HTMLButtonElement).style.background = '#c04010' }}
-                    onMouseOut={e => { if (!accepting) (e.currentTarget as HTMLButtonElement).style.background = '#d94e18' }}>
-                    <Zap size={12} /> Aceitar
-                  </button>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
+                    <span style={{ fontSize: 18, fontWeight: 800, color: '#fff', fontFamily: 'var(--font-heading)', letterSpacing: '-0.02em' }}>
+                      {formatCurrency(job.value)}
+                    </span>
+                    {job.mode === 'proposal' && (
+                      <span style={{ fontSize: 9.5, color: '#a78bfa', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                        Orçamento sugerido
+                      </span>
+                    )}
+                  </div>
+                  {job.mode === 'proposal' ? (
+                    <button
+                      onClick={() => setProposalJob(job)}
+                      style={{
+                        padding: '10px 20px',
+                        background: '#a78bfa', color: '#0f1219', border: 'none',
+                        cursor: 'pointer',
+                        fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase',
+                        fontFamily: 'inherit', transition: 'background 0.15s',
+                        display: 'flex', alignItems: 'center', gap: 6,
+                      }}
+                      onMouseOver={e => { (e.currentTarget as HTMLButtonElement).style.background = '#8b6ed6' }}
+                      onMouseOut={e => { (e.currentTarget as HTMLButtonElement).style.background = '#a78bfa' }}>
+                      <Send size={12} /> Enviar proposta
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => setConfirmJob(job)}
+                      disabled={!!accepting}
+                      style={{
+                        padding: '10px 20px',
+                        background: accepting ? 'rgba(217,78,24,0.4)' : '#d94e18',
+                        color: '#fff', border: 'none',
+                        cursor: accepting ? 'not-allowed' : 'pointer',
+                        fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase',
+                        fontFamily: 'inherit', transition: 'background 0.15s',
+                        display: 'flex', alignItems: 'center', gap: 6,
+                      }}
+                      onMouseOver={e => { if (!accepting) (e.currentTarget as HTMLButtonElement).style.background = '#c04010' }}
+                      onMouseOut={e => { if (!accepting) (e.currentTarget as HTMLButtonElement).style.background = '#d94e18' }}>
+                      <Zap size={12} /> Aceitar
+                    </button>
+                  )}
                 </div>
               </div>
             ))
