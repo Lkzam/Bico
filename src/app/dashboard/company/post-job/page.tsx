@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { toast, Toaster } from 'sonner'
-import { Check, ArrowRight, Wifi, MapPin, Clock } from 'lucide-react'
+import { Check, ArrowRight, Wifi, MapPin, Clock, X } from 'lucide-react'
 import { DocumentGateModal } from '@/components/DocumentGateModal'
 
 export default function PostJobPage() {
@@ -15,9 +15,16 @@ export default function PostJobPage() {
   const [allTags, setAllTags] = useState<any[]>([])
   const [selectedTagIds, setSelectedTagIds] = useState<Set<string>>(new Set())
   const [workType, setWorkType] = useState<'remote' | 'presential'>('remote')
-  const [mode, setMode] = useState<'fast' | 'proposal'>('fast')
+  const [mode, setMode] = useState<'fast' | 'proposal' | 'contract'>('fast')
   const [deadlineUnit, setDeadlineUnit] = useState<'hours' | 'days'>('hours')
   const [form, setForm] = useState({ title: '', description: '', value: '', deadline_hours: '', address: '' })
+
+  // Milestones (só quando mode === 'contract'). Cada um tem position implícita pela ordem do array.
+  type Milestone = { title: string; description: string; value: string; deadline_hours: string }
+  const emptyMilestone: Milestone = { title: '', description: '', value: '', deadline_hours: '' }
+  const [milestones, setMilestones] = useState<Milestone[]>([emptyMilestone, emptyMilestone])
+
+  const milestonesTotal = milestones.reduce((sum, m) => sum + (parseFloat(m.value) || 0), 0)
 
   useEffect(() => {
     supabase.from('tags').select('*').order('name').then(({ data }) => setAllTags(data ?? []))
@@ -59,6 +66,42 @@ export default function PostJobPage() {
 
   async function doPublish(profileId: string) {
     setLoading(true)
+
+    // Contratos vão por uma API server-side (atômico: job + milestones + tags)
+    if (mode === 'contract') {
+      // Validação client-side dos milestones antes de chamar a API
+      const cleaned = milestones
+        .filter(m => m.title.trim() && parseFloat(m.value) > 0)
+      if (cleaned.length === 0) {
+        toast.error('Adicione pelo menos uma etapa com título e valor.')
+        setLoading(false)
+        return
+      }
+
+      const res = await fetch('/api/contracts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title:       form.title,
+          description: form.description,
+          tagIds:      Array.from(selectedTagIds),
+          workType,
+          address:     workType === 'presential' ? form.address : '',
+          milestones:  cleaned.map(m => ({
+            title:          m.title.trim(),
+            description:    m.description.trim() || null,
+            value:          parseFloat(m.value),
+            deadline_hours: m.deadline_hours ? parseInt(m.deadline_hours) : null,
+          })),
+        }),
+      })
+      const json = await res.json()
+      if (!res.ok) { toast.error(json.error ?? 'Erro ao criar contrato.'); setLoading(false); return }
+      toast.success('Contrato publicado! Aguarde propostas dos freelancers.')
+      setTimeout(() => router.push('/dashboard/company'), 1200)
+      return
+    }
+
     const { data: job, error } = await supabase
       .from('jobs')
       .insert({
@@ -140,14 +183,15 @@ export default function PostJobPage() {
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
 
-              {/* Modo de recebimento — fast (1º aceita) ou proposal (eu escolho) */}
+              {/* Modo de recebimento — fast | proposal | contract */}
               <div>
                 <label style={labelStyle}>Como você quer receber freelancers?</label>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
                   {([
-                    { value: 'fast',     label: 'Imediato',        sub: 'O 1º freelancer que aceitar fica com o trabalho' },
-                    { value: 'proposal', label: 'Por propostas',   sub: 'Receba propostas e escolha o melhor' },
-                  ] as { value: 'fast' | 'proposal'; label: string; sub: string }[]).map(opt => {
+                    { value: 'fast',     label: 'Imediato',     sub: 'O 1º freelancer que aceitar fica com o trabalho' },
+                    { value: 'proposal', label: 'Por propostas', sub: 'Receba propostas e escolha o melhor' },
+                    { value: 'contract', label: 'Contrato',     sub: 'Trabalho em várias entregas (milestones)' },
+                  ] as { value: 'fast' | 'proposal' | 'contract'; label: string; sub: string }[]).map(opt => {
                     const active = mode === opt.value
                     return (
                       <button
@@ -182,6 +226,11 @@ export default function PostJobPage() {
                 {mode === 'proposal' && (
                   <p style={{ fontSize: 11.5, color: 'rgba(185,190,200,0.55)', margin: '10px 2px 0', lineHeight: 1.5 }}>
                     O valor abaixo será exibido como <strong>orçamento sugerido</strong>. Cada freelancer pode propor outro valor e prazo.
+                  </p>
+                )}
+                {mode === 'contract' && (
+                  <p style={{ fontSize: 11.5, color: 'rgba(185,190,200,0.55)', margin: '10px 2px 0', lineHeight: 1.5 }}>
+                    Defina as <strong>entregas (milestones)</strong> abaixo. Você paga o total adiantado e o valor de cada milestone é liberado conforme aprovação. Freelancers podem ajustar o plano na proposta.
                   </p>
                 )}
               </div>
@@ -280,6 +329,8 @@ export default function PostJobPage() {
                 />
               </div>
 
+              {/* Em modo 'contract', valor e prazo vêm dos milestones — não há campo único */}
+              {mode !== 'contract' && (
               <div className="dash-inline-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                 <div>
                   <label style={labelStyle}>
@@ -337,6 +388,105 @@ export default function PostJobPage() {
                   </p>
                 </div>
               </div>
+              )}
+
+              {/* Editor de milestones — só em modo 'contract' */}
+              {mode === 'contract' && (
+                <div>
+                  <label style={labelStyle}>Milestones (entregas)</label>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    {milestones.map((m, idx) => (
+                      <div key={idx} style={{
+                        border: '1px solid rgba(167,139,250,0.25)',
+                        background: 'rgba(167,139,250,0.04)',
+                        padding: 12,
+                      }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                          <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#a78bfa' }}>
+                            Etapa {idx + 1}
+                          </span>
+                          {milestones.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => setMilestones(arr => arr.filter((_, i) => i !== idx))}
+                              style={{
+                                background: 'none', border: 'none', cursor: 'pointer',
+                                color: 'rgba(239,68,68,0.7)', fontSize: 11, padding: 4,
+                                fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 4,
+                              }}>
+                              <X size={11} /> Remover
+                            </button>
+                          )}
+                        </div>
+                        <input
+                          placeholder="Título da etapa (ex: 'Rascunho do logo')"
+                          value={m.title}
+                          onChange={e => setMilestones(arr => arr.map((x, i) => i === idx ? { ...x, title: e.target.value } : x))}
+                          style={{ ...inputStyle, marginBottom: 8 }}
+                          onFocus={e => (e.target.style.borderColor = '#a78bfa')}
+                          onBlur={e => (e.target.style.borderColor = 'rgba(255,255,255,0.1)')}
+                        />
+                        <textarea
+                          placeholder="Descrição (opcional) — o que é entregue nesta etapa"
+                          value={m.description}
+                          onChange={e => setMilestones(arr => arr.map((x, i) => i === idx ? { ...x, description: e.target.value } : x))}
+                          rows={2}
+                          style={{ ...inputStyle, marginBottom: 8, resize: 'vertical' as const, lineHeight: 1.5 }}
+                          onFocus={e => (e.target.style.borderColor = '#a78bfa')}
+                          onBlur={e => (e.target.style.borderColor = 'rgba(255,255,255,0.1)')}
+                        />
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                          <input
+                            type="number" min="1" step="0.01" placeholder="Valor R$"
+                            value={m.value}
+                            onChange={e => setMilestones(arr => arr.map((x, i) => i === idx ? { ...x, value: e.target.value } : x))}
+                            style={inputStyle}
+                            onFocus={e => (e.target.style.borderColor = '#a78bfa')}
+                            onBlur={e => (e.target.style.borderColor = 'rgba(255,255,255,0.1)')}
+                          />
+                          <input
+                            type="number" min="1" placeholder="Prazo em horas (opcional)"
+                            value={m.deadline_hours}
+                            onChange={e => setMilestones(arr => arr.map((x, i) => i === idx ? { ...x, deadline_hours: e.target.value } : x))}
+                            style={inputStyle}
+                            onFocus={e => (e.target.style.borderColor = '#a78bfa')}
+                            onBlur={e => (e.target.style.borderColor = 'rgba(255,255,255,0.1)')}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setMilestones(arr => [...arr, emptyMilestone])}
+                    style={{
+                      marginTop: 10, padding: '10px 14px', width: '100%',
+                      background: 'transparent', border: '1px dashed rgba(167,139,250,0.4)',
+                      color: '#a78bfa', cursor: 'pointer',
+                      fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase',
+                      fontFamily: 'inherit',
+                    }}>
+                    + Adicionar etapa
+                  </button>
+
+                  {/* Resumo do total */}
+                  <div style={{
+                    marginTop: 12, padding: '12px 14px',
+                    background: 'rgba(34,197,94,0.05)',
+                    border: '1px solid rgba(34,197,94,0.2)',
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  }}>
+                    <span style={{ fontSize: 12, color: 'rgba(185,190,200,0.65)' }}>Total do contrato</span>
+                    <span style={{ fontSize: 18, fontWeight: 800, color: '#22c55e', fontFamily: 'var(--font-heading)' }}>
+                      R$ {milestonesTotal.toFixed(2).replace('.', ',')}
+                    </span>
+                  </div>
+                  <p style={{ fontSize: 10.5, color: 'rgba(185,190,200,0.4)', margin: '6px 2px 0', lineHeight: 1.5 }}>
+                    Pagamento total adiantado via PIX. Cada milestone é liberada conforme aprovação.
+                  </p>
+                </div>
+              )}
             </div>
           </div>
 

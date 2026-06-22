@@ -32,7 +32,8 @@ export default async function JobProposalsPage({
 
   if (!job)                        redirect('/dashboard/company/jobs')
   if (job.company_id !== profile.id) redirect('/dashboard/company/jobs')
-  if (job.mode !== 'proposal')       redirect(`/dashboard/company/jobs`)
+  if (job.mode !== 'proposal' && job.mode !== 'contract')
+    redirect(`/dashboard/company/jobs`)
 
   // Lista propostas (mais recentes primeiro). Usa admin para incluir dados do freelancer.
   const { data: proposals } = await admin

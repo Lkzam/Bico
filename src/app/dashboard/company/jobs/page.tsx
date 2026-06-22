@@ -345,8 +345,8 @@ export default function CompanyJobsPage() {
                       {status.label}
                     </span>
 
-                    {/* Badge clicável: leva para a página de propostas */}
-                    {job.mode === 'proposal' && job.status === 'open' && (
+                    {/* Badge clicável: leva para a página de propostas (proposal | contract) */}
+                    {(job.mode === 'proposal' || job.mode === 'contract') && job.status === 'open' && (
                       <Link
                         href={`/dashboard/company/jobs/${job.id}/proposals`}
                         style={{
@@ -360,7 +360,7 @@ export default function CompanyJobsPage() {
                         }}>
                         {job._proposalsCount > 0
                           ? `${job._proposalsCount} ${job._proposalsCount === 1 ? 'proposta' : 'propostas'}`
-                          : 'Por propostas'}
+                          : (job.mode === 'contract' ? 'Contrato' : 'Por propostas')}
                         <ArrowRight size={9} />
                       </Link>
                     )}

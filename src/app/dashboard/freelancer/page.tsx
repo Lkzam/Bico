@@ -113,6 +113,7 @@ export default function FreelancerDashboard() {
       }, async (payload) => {
         const newJob = payload.new as any
         if (newJob.status !== 'open') return
+        if (newJob.mode === 'contract') return  // contratos só após a Fase 3B
 
         // Check if any of its tags match ours
         const { data: jt } = await supabase
@@ -165,6 +166,7 @@ export default function FreelancerDashboard() {
       .select('*, profiles!jobs_company_id_fkey(name), job_tags(tags(name))')
       .in('id', jobIds)
       .eq('status', 'open')
+      .in('mode', ['fast', 'proposal'])  // contratos só após a Fase 3B
       .is('freelancer_id', null)
       .order('created_at', { ascending: false })
 
