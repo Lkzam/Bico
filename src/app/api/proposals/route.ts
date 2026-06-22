@@ -27,19 +27,9 @@ export async function POST(req: Request) {
 
   let body: any = {}
   try { body = await req.json() } catch {}
-  const { jobId, value, deadlineHours, message } = body
+  const { jobId, value, deadlineHours, message, proposedMilestones } = body
 
   if (!jobId)  return NextResponse.json({ error: 'jobId obrigatório.' }, { status: 400 })
-
-  const parsedValue = Number(value)
-  if (!Number.isFinite(parsedValue) || parsedValue <= 0)
-    return NextResponse.json({ error: 'Valor inválido.' }, { status: 400 })
-
-  const parsedDeadline = deadlineHours == null || deadlineHours === ''
-    ? null
-    : Math.max(1, Math.floor(Number(deadlineHours)))
-  if (parsedDeadline !== null && !Number.isFinite(parsedDeadline))
-    return NextResponse.json({ error: 'Prazo inválido.' }, { status: 400 })
 
   const trimmedMsg = typeof message === 'string' ? message.trim().slice(0, 2000) : null
 
@@ -50,21 +40,59 @@ export async function POST(req: Request) {
     .eq('id', jobId).single()
 
   if (!job)                                return NextResponse.json({ error: 'Trabalho não encontrado.' }, { status: 404 })
-  if (job.mode !== 'proposal')             return NextResponse.json({ error: 'Este trabalho não aceita propostas.' }, { status: 400 })
+  if (job.mode !== 'proposal' && job.mode !== 'contract')
+                                           return NextResponse.json({ error: 'Este trabalho não aceita propostas.' }, { status: 400 })
   if (job.status !== 'open')               return NextResponse.json({ error: 'Este trabalho não está mais aberto.' }, { status: 409 })
   if (job.freelancer_id)                   return NextResponse.json({ error: 'Este trabalho já tem freelancer.' }, { status: 409 })
   if (job.company_id === freelancer.id)    return NextResponse.json({ error: 'Você não pode propor para o próprio trabalho.' }, { status: 400 })
+
+  // ── Valor e milestones dependem do modo ───────────────────────────────────
+  let finalValue: number
+  let finalDeadline: number | null = null
+  let milestonesJson: any[] | null = null
+
+  if (job.mode === 'contract') {
+    // Em contrato, o valor é a SOMA dos milestones propostos.
+    const raw: any[] = Array.isArray(proposedMilestones) ? proposedMilestones : []
+    const cleaned = raw
+      .map(m => ({
+        title:          (m?.title ?? '').toString().trim(),
+        description:    m?.description ? m.description.toString().trim() : null,
+        value:          Number(m?.value),
+        deadline_hours: m?.deadline_hours == null || m?.deadline_hours === ''
+                          ? null
+                          : Math.max(1, Math.floor(Number(m.deadline_hours))),
+      }))
+      .filter(m => m.title && Number.isFinite(m.value) && m.value > 0)
+
+    if (cleaned.length === 0)
+      return NextResponse.json({ error: 'Inclua ao menos uma etapa válida.' }, { status: 400 })
+
+    milestonesJson = cleaned
+    finalValue = Number(cleaned.reduce((s, m) => s + m.value, 0).toFixed(2))
+  } else {
+    // proposal comum: valor + prazo direto
+    finalValue = Number(value)
+    if (!Number.isFinite(finalValue) || finalValue <= 0)
+      return NextResponse.json({ error: 'Valor inválido.' }, { status: 400 })
+    finalDeadline = deadlineHours == null || deadlineHours === ''
+      ? null
+      : Math.max(1, Math.floor(Number(deadlineHours)))
+    if (finalDeadline !== null && !Number.isFinite(finalDeadline))
+      return NextResponse.json({ error: 'Prazo inválido.' }, { status: 400 })
+  }
 
   // Insere a proposta — o índice único parcial impede 2 pendentes
   const { error: insertError, data: created } = await admin
     .from('proposals')
     .insert({
-      job_id:         job.id,
-      freelancer_id:  freelancer.id,
-      value:          parsedValue,
-      deadline_hours: parsedDeadline,
-      message:        trimmedMsg,
-      status:         'pending',
+      job_id:              job.id,
+      freelancer_id:       freelancer.id,
+      value:               finalValue,
+      deadline_hours:      finalDeadline,
+      message:             trimmedMsg,
+      proposed_milestones: milestonesJson,
+      status:              'pending',
     })
     .select('id').single()
 

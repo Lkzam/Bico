@@ -11,6 +11,7 @@ import { toast, Toaster } from 'sonner'
 import { ReviewModal } from '@/components/ReviewModal'
 import { DocumentGateModal } from '@/components/DocumentGateModal'
 import { ProposalModal } from '@/components/ProposalModal'
+import { ContractProposalModal } from '@/components/ContractProposalModal'
 
 const statusMap: Record<string, { label: string; color: string }> = {
   open:             { label: 'Aberto',           color: '#3b82f6' },
@@ -35,6 +36,7 @@ export default function FreelancerDashboard() {
   const [confirmJob, setConfirmJob] = useState<any | null>(null)
   const [docGate, setDocGate] = useState<any | null>(null)  // job aguardando CPF p/ aceitar
   const [proposalJob, setProposalJob] = useState<any | null>(null)  // job para enviar proposta
+  const [contractJob, setContractJob] = useState<any | null>(null)  // contrato para propor
   const [pendingProposalAfterDoc, setPendingProposalAfterDoc] = useState<any | null>(null) // retoma modal de proposta após cadastrar CPF
   const [cancelJobId, setCancelJobId] = useState<string | null>(null)
   const [cancelling, setCancelling] = useState(false)
@@ -113,7 +115,6 @@ export default function FreelancerDashboard() {
       }, async (payload) => {
         const newJob = payload.new as any
         if (newJob.status !== 'open') return
-        if (newJob.mode === 'contract') return  // contratos só após a Fase 3B
 
         // Check if any of its tags match ours
         const { data: jt } = await supabase
@@ -122,11 +123,12 @@ export default function FreelancerDashboard() {
         const hasMatch = jobTagIds.some(id => userTagIdsRef.current.includes(id))
 
         if (hasMatch) {
-          const isProposal = newJob.mode === 'proposal'
+          const desc =
+            newJob.mode === 'contract' ? `${formatCurrency(newJob.value)} · Contrato com etapas — veja e proponha!`
+            : newJob.mode === 'proposal' ? `${formatCurrency(newJob.value)} sugerido · Envie sua proposta!`
+            : `${formatCurrency(newJob.value)} · Seja o primeiro a aceitar!`
           toast.success(`Novo trabalho disponível: "${newJob.title}"`, {
-            description: isProposal
-              ? `${formatCurrency(newJob.value)} sugerido · Envie sua proposta!`
-              : `${formatCurrency(newJob.value)} · Seja o primeiro a aceitar!`,
+            description: desc,
             duration: 8000,
             action: { label: 'Ver', onClick: () => window.scrollTo({ top: 0, behavior: 'smooth' }) },
           })
@@ -166,12 +168,11 @@ export default function FreelancerDashboard() {
       .select('*, profiles!jobs_company_id_fkey(name), job_tags(tags(name))')
       .in('id', jobIds)
       .eq('status', 'open')
-      .in('mode', ['fast', 'proposal'])  // contratos só após a Fase 3B
       .is('freelancer_id', null)
       .order('created_at', { ascending: false })
 
-    // Esconde jobs 'proposal' onde este freelancer já tem proposta pendente
-    const proposalJobIds = (jobs ?? []).filter(j => j.mode === 'proposal').map(j => j.id)
+    // Esconde jobs com proposta pendente deste freelancer (proposal + contract)
+    const proposalJobIds = (jobs ?? []).filter(j => j.mode === 'proposal' || j.mode === 'contract').map(j => j.id)
     let pendingSet = new Set<string>()
     if (proposalJobIds.length > 0) {
       const { data: pending } = await supabase
@@ -265,11 +266,14 @@ export default function FreelancerDashboard() {
           onDone={() => {
             const acceptJob = docGate
             setDocGate(null)
-            // Se veio do fluxo de proposta, reabre o ProposalModal; senão, retoma o accept
+            // Fluxo de proposta (proposal) → reabre o ProposalModal
             if (pendingProposalAfterDoc) {
               const propJob = pendingProposalAfterDoc
               setPendingProposalAfterDoc(null)
               setProposalJob(propJob)
+            } else if (acceptJob?.id === '__doc_only__') {
+              // Veio do fluxo de contrato: só cadastrar CPF. Freelancer reabre o contrato.
+              toast.success('CPF cadastrado! Abra o contrato novamente para enviar a proposta.')
             } else {
               doAccept(acceptJob)
             }
@@ -290,6 +294,22 @@ export default function FreelancerDashboard() {
             setProposalJob(null)
             setPendingProposalAfterDoc(j)  // marca pra reabrir após cadastrar
             setDocGate(j)
+          }}
+        />
+      )}
+
+      {contractJob && profile && (
+        <ContractProposalModal
+          job={contractJob}
+          onClose={() => setContractJob(null)}
+          onSent={async () => {
+            setContractJob(null)
+            await loadAvailableJobs(userTagIds, profile.id)
+          }}
+          onNeedsDocument={() => {
+            setContractJob(null)
+            setDocGate({ id: '__doc_only__' })  // só abre o gate de CPF; freelancer reabre o contrato manualmente
+            toast.info('Cadastre seu CPF para enviar propostas.')
           }}
         />
       )}
@@ -414,8 +434,28 @@ export default function FreelancerDashboard() {
                         Orçamento sugerido
                       </span>
                     )}
+                    {job.mode === 'contract' && (
+                      <span style={{ fontSize: 9.5, color: '#a78bfa', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                        Contrato · etapas
+                      </span>
+                    )}
                   </div>
-                  {job.mode === 'proposal' ? (
+                  {job.mode === 'contract' ? (
+                    <button
+                      onClick={() => setContractJob(job)}
+                      style={{
+                        padding: '10px 20px',
+                        background: '#a78bfa', color: '#0f1219', border: 'none',
+                        cursor: 'pointer',
+                        fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase',
+                        fontFamily: 'inherit', transition: 'background 0.15s',
+                        display: 'flex', alignItems: 'center', gap: 6,
+                      }}
+                      onMouseOver={e => { (e.currentTarget as HTMLButtonElement).style.background = '#8b6ed6' }}
+                      onMouseOut={e => { (e.currentTarget as HTMLButtonElement).style.background = '#a78bfa' }}>
+                      <Send size={12} /> Ver contrato
+                    </button>
+                  ) : job.mode === 'proposal' ? (
                     <button
                       onClick={() => setProposalJob(job)}
                       style={{

@@ -39,7 +39,7 @@ export default async function JobProposalsPage({
   const { data: proposals } = await admin
     .from('proposals')
     .select(`
-      id, value, deadline_hours, message, status, created_at, freelancer_id,
+      id, value, deadline_hours, message, status, created_at, freelancer_id, proposed_milestones,
       freelancer:profiles!proposals_freelancer_id_fkey(id, name, rating, rating_count, bio, portfolio_url)
     `)
     .eq('job_id', jobId)
@@ -125,7 +125,7 @@ function ProposalCard({
   proposal, job, canAccept, muted = false,
 }: {
   proposal: any
-  job: { id: string; value: number; deadline_hours: number | null }
+  job: { id: string; value: number; deadline_hours: number | null; mode?: string }
   canAccept: boolean
   muted?: boolean
 }) {
@@ -229,6 +229,29 @@ function ProposalCard({
         </div>
       </div>
 
+      {/* Plano de milestones (contratos) */}
+      {Array.isArray(proposal.proposed_milestones) && proposal.proposed_milestones.length > 0 && (
+        <div style={{ marginBottom: 14 }}>
+          <p style={{ fontSize: 10, color: '#a78bfa', margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700 }}>
+            Plano de etapas ({proposal.proposed_milestones.length})
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {proposal.proposed_milestones.map((m: any, i: number) => (
+              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 10, padding: '8px 12px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                <div style={{ minWidth: 0 }}>
+                  <span style={{ fontSize: 12.5, color: '#fff', fontWeight: 600 }}>{i + 1}. {m.title}</span>
+                  {m.deadline_hours ? <span style={{ fontSize: 11, color: 'rgba(185,190,200,0.45)', marginLeft: 6 }}>· {m.deadline_hours}h</span> : null}
+                  {m.description ? <p style={{ fontSize: 11.5, color: 'rgba(185,190,200,0.55)', margin: '2px 0 0', lineHeight: 1.4 }}>{m.description}</p> : null}
+                </div>
+                <span style={{ fontSize: 13, fontWeight: 700, color: '#22c55e', whiteSpace: 'nowrap', fontFamily: 'var(--font-heading)' }}>
+                  {formatCurrency(Number(m.value))}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Mensagem */}
       {proposal.message && (
         <div style={{ padding: 12, marginBottom: canAccept ? 14 : 0, background: 'rgba(167,139,250,0.04)', border: '1px solid rgba(167,139,250,0.15)' }}>
@@ -238,8 +261,13 @@ function ProposalCard({
       )}
 
       {/* Botão Escolher (só em pending + ainda sem accepted) */}
-      {canAccept && proposal.status === 'pending' && (
+      {canAccept && proposal.status === 'pending' && job.mode !== 'contract' && (
         <AcceptProposalButton proposalId={proposal.id} freelancerName={f?.name ?? 'este freelancer'} freelancerId={f?.id} />
+      )}
+      {canAccept && proposal.status === 'pending' && job.mode === 'contract' && (
+        <p style={{ fontSize: 11.5, color: 'rgba(245,158,11,0.85)', margin: 0, padding: '10px 12px', background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.2)' }}>
+          Escolha + pagamento do contrato chegam na próxima atualização.
+        </p>
       )}
     </div>
   )
