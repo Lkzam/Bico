@@ -59,7 +59,22 @@ export default function CompanyJobsPage() {
         .select('*, profiles!jobs_freelancer_id_fkey(name)')
         .eq('company_id', profile.id)
         .order('created_at', { ascending: false })
-      setJobs(data ?? [])
+
+      // Contador de propostas pendentes por job (single query)
+      const jobIds = (data ?? []).map(j => j.id)
+      const counts: Record<string, number> = {}
+      if (jobIds.length > 0) {
+        const { data: props } = await supabase
+          .from('proposals')
+          .select('job_id')
+          .in('job_id', jobIds)
+          .eq('status', 'pending')
+        for (const p of props ?? []) {
+          counts[p.job_id] = (counts[p.job_id] ?? 0) + 1
+        }
+      }
+      const jobsWithCounts = (data ?? []).map(j => ({ ...j, _proposalsCount: counts[j.id] ?? 0 }))
+      setJobs(jobsWithCounts)
 
       // Contador de jobs já concluídos e arquivados
       const { count } = await supabase
@@ -330,17 +345,24 @@ export default function CompanyJobsPage() {
                       {status.label}
                     </span>
 
-                    {/* Badge do modo (só quando job ainda está aberto em modo proposta) */}
+                    {/* Badge clicável: leva para a página de propostas */}
                     {job.mode === 'proposal' && job.status === 'open' && (
-                      <span style={{
-                        fontSize: '0.58rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase',
-                        padding: '4px 10px',
-                        background: 'rgba(167,139,250,0.12)',
-                        border: '1px solid rgba(167,139,250,0.4)',
-                        color: '#a78bfa', whiteSpace: 'nowrap',
-                      }}>
-                        Por propostas
-                      </span>
+                      <Link
+                        href={`/dashboard/company/jobs/${job.id}/proposals`}
+                        style={{
+                          display: 'inline-flex', alignItems: 'center', gap: 6,
+                          fontSize: '0.58rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase',
+                          padding: '4px 10px',
+                          background: job._proposalsCount > 0 ? 'rgba(167,139,250,0.22)' : 'rgba(167,139,250,0.08)',
+                          border: '1px solid rgba(167,139,250,0.45)',
+                          color: '#a78bfa', whiteSpace: 'nowrap', textDecoration: 'none',
+                          transition: 'background 0.15s',
+                        }}>
+                        {job._proposalsCount > 0
+                          ? `${job._proposalsCount} ${job._proposalsCount === 1 ? 'proposta' : 'propostas'}`
+                          : 'Por propostas'}
+                        <ArrowRight size={9} />
+                      </Link>
                     )}
 
                     {/* Botão Pagar (quando entregue) */}
