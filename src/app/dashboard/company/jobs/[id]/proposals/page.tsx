@@ -6,6 +6,7 @@ import { calcCompanyTotal } from '@/lib/fees'
 import { Star, ArrowLeft, MessageSquare } from 'lucide-react'
 import Link from 'next/link'
 import { AcceptProposalButton } from './AcceptProposalButton'
+import { AcceptContractProposalButton } from './AcceptContractProposalButton'
 
 export const dynamic = 'force-dynamic'
 
@@ -265,9 +266,12 @@ function ProposalCard({
         <AcceptProposalButton proposalId={proposal.id} freelancerName={f?.name ?? 'este freelancer'} freelancerId={f?.id} />
       )}
       {canAccept && proposal.status === 'pending' && job.mode === 'contract' && (
-        <p style={{ fontSize: 11.5, color: 'rgba(245,158,11,0.85)', margin: 0, padding: '10px 12px', background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.2)' }}>
-          Escolha + pagamento do contrato chegam na próxima atualização.
-        </p>
+        <AcceptContractProposalButton
+          proposalId={proposal.id}
+          freelancerName={f?.name ?? 'este freelancer'}
+          freelancerId={f?.id}
+          value={proposal.value}
+        />
       )}
     </div>
   )

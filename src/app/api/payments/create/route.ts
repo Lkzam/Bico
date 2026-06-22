@@ -20,13 +20,18 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Apenas empresas podem pagar.' }, { status: 403 })
 
   const { data: job } = await admin
-    .from('jobs').select('id, value, status, company_id, title').eq('id', jobId).single()
+    .from('jobs').select('id, value, status, company_id, title, mode').eq('id', jobId).single()
 
   if (!job) return NextResponse.json({ error: 'Trabalho não encontrado.' }, { status: 404 })
   if (job.company_id !== profile.id)
     return NextResponse.json({ error: 'Sem permissão.' }, { status: 403 })
-  if (job.status !== 'delivered')
-    return NextResponse.json({ error: 'Trabalho ainda não foi entregue.' }, { status: 400 })
+
+  // Dois momentos de pagamento permitidos:
+  //  - job comum/proposal: status 'delivered' (paga depois da entrega)
+  //  - contrato: status 'awaiting_payment' (paga o total upfront, libera por etapa)
+  const isContractUpfront = job.mode === 'contract' && job.status === 'awaiting_payment'
+  if (job.status !== 'delivered' && !isContractUpfront)
+    return NextResponse.json({ error: 'Pagamento não disponível para este trabalho agora.' }, { status: 400 })
 
   // Verifica se já existe cobrança pendente e AINDA VÁLIDA para esse job.
   // A cobrança Efí expira em 1h (expiracao: 3600). Servir um QR já expirado faz

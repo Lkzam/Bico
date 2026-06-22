@@ -40,7 +40,7 @@ export async function POST(
   if (profile.role === 'freelancer' && job.freelancer_id !== profile.id)
     return NextResponse.json({ error: 'Sem permissão.' }, { status: 403 })
 
-  if (!['open', 'in_progress'].includes(job.status))
+  if (!['open', 'awaiting_payment', 'in_progress'].includes(job.status))
     return NextResponse.json({ error: 'Não é possível cancelar um trabalho já entregue ou concluído.' }, { status: 400 })
 
   // Quem cancela e quem será notificado

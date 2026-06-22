@@ -59,12 +59,15 @@ export async function GET(req: Request) {
           paid_at:        now,
         }).eq('id', payment.id).eq('status', 'pending')  // idempotente: só se ainda pending
 
-        // Só avança o job se ele ainda estiver em "delivered"
+        // Avança o job conforme o fluxo (espelha o webhook)
         if (job.status === 'delivered') {
           await admin.from('jobs').update({
             status:              'payment_received',
             payment_received_at: now,
           }).eq('id', job.id).eq('status', 'delivered')
+        } else if (job.status === 'awaiting_payment') {
+          // Contrato: in_progress + chat + 1ª etapa (atômico e idempotente)
+          await admin.rpc('fund_contract', { p_job_id: job.id })
         }
 
         console.log(`[payments/status] Reconciliado via gateway. txid=${txid} job=${job.id}`)

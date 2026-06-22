@@ -18,6 +18,7 @@ import { ReviewModal } from '@/components/ReviewModal'
 
 const statusMap: Record<string, { label: string; color: string }> = {
   open:             { label: 'Aberto',           color: '#3b82f6' },
+  awaiting_payment: { label: 'Aguardando pagamento', color: '#a78bfa' },
   in_progress:      { label: 'Em andamento',     color: '#d94e18' },
   delivered:        { label: 'Entregue',         color: '#C18F6B' },
   payment_received: { label: 'Pago — em análise', color: '#a78bfa' },
@@ -385,6 +386,26 @@ export default function CompanyJobsPage() {
                       </button>
                     )}
 
+                    {/* Botão Pagar contrato (upfront, após escolher a proposta) */}
+                    {job.status === 'awaiting_payment' && (
+                      <button
+                        onClick={() => setPayJobId(job.id)}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: 6,
+                          padding: '7px 14px',
+                          background: 'rgba(167,139,250,0.14)',
+                          border: '1px solid rgba(167,139,250,0.45)',
+                          color: '#a78bfa', cursor: 'pointer',
+                          fontSize: '0.62rem', fontWeight: 700,
+                          letterSpacing: '0.08em', textTransform: 'uppercase',
+                          fontFamily: 'inherit', transition: 'all 0.15s', whiteSpace: 'nowrap',
+                        }}
+                        onMouseOver={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(167,139,250,0.24)' }}
+                        onMouseOut={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(167,139,250,0.14)' }}>
+                        <CreditCard size={11} /> Pagar contrato
+                      </button>
+                    )}
+
                     {/* Editar (aberto ou em andamento) */}
                     {['open', 'in_progress'].includes(job.status) && (
                       <button
@@ -406,8 +427,8 @@ export default function CompanyJobsPage() {
                       </button>
                     )}
 
-                    {/* Cancelar (aberto ou em andamento) */}
-                    {['open', 'in_progress'].includes(job.status) && (
+                    {/* Cancelar (aberto, aguardando pagamento ou em andamento) */}
+                    {['open', 'awaiting_payment', 'in_progress'].includes(job.status) && (
                       <button
                         onClick={() => setCancelJobId(job.id)}
                         title="Cancelar trabalho"
@@ -554,8 +575,11 @@ export default function CompanyJobsPage() {
           job={payJob}
           onClose={() => setPayJobId(null)}
           onSuccess={() => {
+            // Contrato: pagamento upfront leva direto para in_progress (escrow financiado).
+            // Demais: vai para payment_received (escrow aguardando aprovação da entrega).
+            const nextStatus = payJob?.mode === 'contract' ? 'in_progress' : 'payment_received'
             setPayJobId(null)
-            setJobs(prev => prev.map(j => j.id === payJobId ? { ...j, status: 'payment_received' } : j))
+            setJobs(prev => prev.map(j => j.id === payJobId ? { ...j, status: nextStatus } : j))
           }}
         />
       )}
@@ -1021,7 +1045,9 @@ function PaymentModal({ job, onClose, onSuccess }: {
       // Pagamento confirmado — dinheiro retido em escrow
       if (json.status === 'paid_pending_approval' || json.status === 'paid') {
         clearInterval(interval)
-        toast.success('Pagamento confirmado! Arquivo liberado para análise.')
+        toast.success(job.mode === 'contract'
+          ? 'Pagamento confirmado! Contrato iniciado e chat liberado.'
+          : 'Pagamento confirmado! Arquivo liberado para análise.')
         onSuccess()
       }
     }, 4000)
@@ -1110,7 +1136,10 @@ function PaymentModal({ job, onClose, onSuccess }: {
           }}>
             <ShieldCheck size={16} style={{ color: '#a78bfa', flexShrink: 0 }} />
             <p style={{ fontSize: 12, color: 'rgba(185,190,200,0.7)', margin: 0, lineHeight: 1.5 }}>
-              O pagamento fica <strong style={{ color: '#a78bfa' }}>retido em escrow</strong>. O freelancer só recebe após você aprovar a entrega.
+              O pagamento fica <strong style={{ color: '#a78bfa' }}>retido em escrow</strong>.{' '}
+              {job.mode === 'contract'
+                ? 'O valor é liberado etapa por etapa, conforme você aprova cada entrega.'
+                : 'O freelancer só recebe após você aprovar a entrega.'}
             </p>
           </div>
 
@@ -1214,7 +1243,9 @@ function PaymentModal({ job, onClose, onSuccess }: {
             }}>
               <ShieldCheck size={14} style={{ color: '#a78bfa', flexShrink: 0 }} />
               <span style={{ fontSize: 11, color: 'rgba(185,190,200,0.6)', textAlign: 'left' }}>
-                Após pagar, você precisará <strong style={{ color: '#a78bfa' }}>aprovar a entrega</strong> para liberar o pagamento ao freelancer.
+                {job.mode === 'contract'
+                  ? <>Após pagar, o contrato inicia e você libera o valor <strong style={{ color: '#a78bfa' }}>aprovando cada etapa</strong>.</>
+                  : <>Após pagar, você precisará <strong style={{ color: '#a78bfa' }}>aprovar a entrega</strong> para liberar o pagamento ao freelancer.</>}
               </span>
             </div>
 

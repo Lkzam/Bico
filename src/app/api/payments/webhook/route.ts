@@ -49,28 +49,34 @@ export async function POST(req: Request) {
         .eq('id', payment.job_id)
         .single()
 
-      if (!job || job.status !== 'delivered') {
+      // Dois fluxos pagam via PIX:
+      //  - 'delivered'        → job comum/proposal (pago após a entrega)
+      //  - 'awaiting_payment' → contrato (total upfront, libera por etapa)
+      if (!job || (job.status !== 'delivered' && job.status !== 'awaiting_payment')) {
         console.warn(`[webhook] txid=${event.txid}: job ${payment.job_id} em estado inesperado (${job?.status ?? 'inexistente'})`)
         continue
       }
 
-      // ✅ ESCROW: dinheiro fica retido — freelancer recebe apenas após aprovação da empresa
+      // ✅ ESCROW: dinheiro fica retido — freelancer recebe apenas após aprovação.
       const now = new Date().toISOString()
-      // Updates condicionados ao status atual → idempotente contra retries do PSP
-      await Promise.all([
-        admin.from('payments').update({
-          status:          'paid_pending_approval',
-          paid_at:         now,
-          pix_end_to_end:  event.endToEndId,
-        }).eq('id', payment.id).eq('status', 'pending'),
+      // Update condicionado ao status atual → idempotente contra retries do PSP.
+      await admin.from('payments').update({
+        status:          'paid_pending_approval',
+        paid_at:         now,
+        pix_end_to_end:  event.endToEndId,
+      }).eq('id', payment.id).eq('status', 'pending')
 
-        admin.from('jobs').update({
+      if (job.status === 'delivered') {
+        await admin.from('jobs').update({
           status:               'payment_received',
           payment_received_at:  now,
-        }).eq('id', job.id).eq('status', 'delivered'),
-      ])
+        }).eq('id', job.id).eq('status', 'delivered')
+      } else {
+        // Contrato: avança para in_progress, cria chat e inicia a 1ª etapa (atômico).
+        await admin.rpc('fund_contract', { p_job_id: job.id })
+      }
 
-      console.log(`[webhook] PIX recebido. txid=${event.txid} job=${job.id}`)
+      console.log(`[webhook] PIX recebido. txid=${event.txid} job=${job.id} (${job.status})`)
     }
 
     return NextResponse.json({ ok: true })
