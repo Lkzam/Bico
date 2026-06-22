@@ -46,10 +46,25 @@ Empresa posta job → freelancer aceita → trabalha → entrega arquivo → emp
 ## Máquina de Estados (jobs.status)
 
 ```
+# job rápido (fast) / por propostas (proposal):
 open → in_progress → delivered → payment_received → completed
                                                   ↘ disputed
+
+# contrato (contract) — pagamento UPFRONT, libera por etapa:
+open → awaiting_payment → in_progress → completed
+  (escolhe proposta)   (PIX pago,    (todas as etapas
+                        chat abre)    aprovadas)
+
 Cancelamento: deleta o job (log em cancelled_job_logs)
 ```
+
+### Modos de trabalho (`jobs.mode`)
+- `fast` — primeiro freelancer que aceita pega o job
+- `proposal` — empresa escolhe entre propostas (valor/prazo)
+- `contract` — empresa define etapas (milestones); freelancer propõe plano
+  ajustado; empresa escolhe + paga total upfront em escrow; libera 93% por
+  etapa aprovada. Tabela `contract_milestones`; RPCs `accept_contract_proposal`,
+  `fund_contract`, `approve_milestone`. Tela: `/dashboard/contracts/[id]`.
 
 ---
 
