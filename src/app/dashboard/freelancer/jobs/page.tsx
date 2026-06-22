@@ -147,23 +147,40 @@ export default function FreelancerJobsPage() {
                   </span>
                   {job.status === 'in_progress' && (
                     <>
-                      <button
-                        onClick={() => setDeliverJobId(job.id)}
-                        style={{
-                          display: 'flex', alignItems: 'center', gap: 6,
-                          padding: '7px 14px',
-                          background: 'rgba(34,197,94,0.12)',
-                          border: '1px solid rgba(34,197,94,0.35)',
-                          color: '#22c55e', cursor: 'pointer',
-                          fontSize: '0.62rem', fontWeight: 700,
-                          letterSpacing: '0.08em', textTransform: 'uppercase',
-                          fontFamily: 'inherit', transition: 'all 0.15s',
-                          whiteSpace: 'nowrap',
-                        }}
-                        onMouseOver={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(34,197,94,0.2)' }}
-                        onMouseOut={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(34,197,94,0.12)' }}>
-                        <Upload size={11} /> Entregar
-                      </button>
+                      {job.mode === 'contract' ? (
+                        <Link
+                          href={`/dashboard/contracts/${job.id}`}
+                          style={{
+                            display: 'flex', alignItems: 'center', gap: 6,
+                            padding: '7px 14px',
+                            background: 'rgba(167,139,250,0.14)',
+                            border: '1px solid rgba(167,139,250,0.45)',
+                            color: '#a78bfa', textDecoration: 'none',
+                            fontSize: '0.62rem', fontWeight: 700,
+                            letterSpacing: '0.08em', textTransform: 'uppercase',
+                            whiteSpace: 'nowrap',
+                          }}>
+                          <Upload size={11} /> Ver etapas
+                        </Link>
+                      ) : (
+                        <button
+                          onClick={() => setDeliverJobId(job.id)}
+                          style={{
+                            display: 'flex', alignItems: 'center', gap: 6,
+                            padding: '7px 14px',
+                            background: 'rgba(34,197,94,0.12)',
+                            border: '1px solid rgba(34,197,94,0.35)',
+                            color: '#22c55e', cursor: 'pointer',
+                            fontSize: '0.62rem', fontWeight: 700,
+                            letterSpacing: '0.08em', textTransform: 'uppercase',
+                            fontFamily: 'inherit', transition: 'all 0.15s',
+                            whiteSpace: 'nowrap',
+                          }}
+                          onMouseOver={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(34,197,94,0.2)' }}
+                          onMouseOut={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(34,197,94,0.12)' }}>
+                          <Upload size={11} /> Entregar
+                        </button>
+                      )}
                       <button
                         onClick={() => setCancelId(job.id)}
                         title="Cancelar trabalho"

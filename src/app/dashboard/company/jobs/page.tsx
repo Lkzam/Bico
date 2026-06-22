@@ -448,6 +448,21 @@ export default function CompanyJobsPage() {
                       </button>
                     )}
 
+                    {/* Ver etapas (contrato em andamento) */}
+                    {job.status === 'in_progress' && job.mode === 'contract' && (
+                      <Link href={`/dashboard/contracts/${job.id}`} style={{
+                        display: 'flex', alignItems: 'center', gap: 6,
+                        padding: '7px 14px',
+                        background: 'rgba(167,139,250,0.14)',
+                        border: '1px solid rgba(167,139,250,0.45)',
+                        color: '#a78bfa', textDecoration: 'none',
+                        fontSize: '0.62rem', fontWeight: 700,
+                        letterSpacing: '0.08em', textTransform: 'uppercase', whiteSpace: 'nowrap',
+                      }}>
+                        Ver etapas <ArrowRight size={9} />
+                      </Link>
+                    )}
+
                     {/* Chat — sempre por último (em andamento) */}
                     {job.status === 'in_progress' && (
                       <Link href="/dashboard/messages" style={{
