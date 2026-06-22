@@ -681,7 +681,8 @@ export default function CompanyJobsPage() {
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
-                {/* Tipo de trabalho */}
+                {/* Tipo de trabalho — só editável em modo proposta */}
+                {editJob.mode === 'proposal' && (
                 <div>
                   <label style={labelStyle}>Tipo de trabalho</label>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
@@ -706,9 +707,10 @@ export default function CompanyJobsPage() {
                     })}
                   </div>
                 </div>
+                )}
 
-                {/* Endereço (presencial) */}
-                {editForm.work_type === 'presential' && (
+                {/* Endereço (só em proposta + presencial) */}
+                {editJob.mode === 'proposal' && editForm.work_type === 'presential' && (
                   <div>
                     <label style={{ ...labelStyle, color: '#d4783a' }}>
                       <MapPin size={10} style={{ display: 'inline', marginRight: 4, verticalAlign: 'middle' }} />

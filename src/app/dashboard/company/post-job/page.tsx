@@ -153,7 +153,14 @@ export default function PostJobPage() {
                       <button
                         key={opt.value}
                         type="button"
-                        onClick={() => setMode(opt.value)}
+                        onClick={() => {
+                          setMode(opt.value)
+                          // Imediato é sempre remoto — reseta qualquer escolha presencial anterior
+                          if (opt.value === 'fast') {
+                            setWorkType('remote')
+                            setForm(f => ({ ...f, address: '' }))
+                          }
+                        }}
                         style={{
                           display: 'flex', flexDirection: 'column', alignItems: 'flex-start',
                           padding: '12px 14px', textAlign: 'left',
@@ -179,7 +186,8 @@ export default function PostJobPage() {
                 )}
               </div>
 
-              {/* Presencial / Remoto */}
+              {/* Presencial / Remoto — só faz sentido em modo proposta (negociação de local) */}
+              {mode === 'proposal' && (
               <div>
                 <label style={labelStyle}>Tipo de trabalho</label>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
@@ -215,9 +223,10 @@ export default function PostJobPage() {
                   })}
                 </div>
               </div>
+              )}
 
-              {/* Endereço — só aparece quando presencial */}
-              {workType === 'presential' && (
+              {/* Endereço — só aparece quando presencial (que só existe em modo proposta) */}
+              {mode === 'proposal' && workType === 'presential' && (
                 <div style={{
                   padding: '14px 16px',
                   background: 'rgba(217,78,24,0.06)',
