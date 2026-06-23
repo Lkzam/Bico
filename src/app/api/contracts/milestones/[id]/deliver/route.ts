@@ -22,7 +22,7 @@ export async function POST(
   if (!profile || profile.role !== 'freelancer')
     return NextResponse.json({ error: 'Apenas freelancers entregam etapas.' }, { status: 403 })
 
-  let body: any = {}
+  let body: { deliveryUrl?: unknown; deliveryNote?: unknown } = {}
   try { body = await req.json() } catch {}
   const deliveryUrl  = typeof body.deliveryUrl === 'string' ? body.deliveryUrl.trim() : ''
   const deliveryNote = typeof body.deliveryNote === 'string' ? body.deliveryNote.trim().slice(0, 2000) : null

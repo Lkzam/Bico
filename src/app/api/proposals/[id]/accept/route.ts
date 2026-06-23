@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import type { AcceptProposalResult } from '@/lib/payments/rpc-results'
 import { NextResponse } from 'next/server'
 
 // POST /api/proposals/[id]/accept
@@ -31,7 +32,7 @@ export async function POST(
   }
 
   // A RPC retorna jsonb com { ok, chat_id, ... } ou { ok:false, error }
-  const result = rpcResult as { ok: boolean; chat_id?: string; freelancer_id?: string; error?: string }
+  const result = rpcResult as AcceptProposalResult
   if (!result.ok) {
     return NextResponse.json({ error: result.error ?? 'Não foi possível aceitar.' }, { status: 409 })
   }

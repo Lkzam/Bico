@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import type { AcceptContractResult } from '@/lib/payments/rpc-results'
 import { NextResponse } from 'next/server'
 
 // POST /api/proposals/[id]/accept-contract
@@ -32,7 +33,7 @@ export async function POST(
     return NextResponse.json({ error: 'Erro ao aceitar proposta.' }, { status: 500 })
   }
 
-  const result = rpcResult as { ok: boolean; job_id?: string; value?: number; error?: string }
+  const result = rpcResult as AcceptContractResult
   if (!result.ok) {
     return NextResponse.json({ error: result.error ?? 'Não foi possível aceitar.' }, { status: 409 })
   }

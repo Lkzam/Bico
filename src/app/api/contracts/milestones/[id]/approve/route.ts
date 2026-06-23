@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { archiveAndCleanJob } from '@/lib/archiveJob'
+import type { ApproveMilestoneResult } from '@/lib/payments/rpc-results'
 import { NextResponse } from 'next/server'
 
 // POST /api/contracts/milestones/[id]/approve
@@ -32,10 +33,7 @@ export async function POST(
     return NextResponse.json({ error: 'Erro ao aprovar etapa.' }, { status: 500 })
   }
 
-  const result = rpcResult as {
-    ok: boolean; credited?: number; all_approved?: boolean
-    job_id?: string; error?: string
-  }
+  const result = rpcResult as ApproveMilestoneResult
   if (!result.ok) {
     return NextResponse.json({ error: result.error ?? 'Não foi possível aprovar.' }, { status: 409 })
   }
