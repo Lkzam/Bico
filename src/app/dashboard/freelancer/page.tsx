@@ -40,7 +40,9 @@ export default function FreelancerDashboard() {
   const [pendingProposalAfterDoc, setPendingProposalAfterDoc] = useState<any | null>(null) // retoma modal de proposta após cadastrar CPF
   const [cancelJobId, setCancelJobId] = useState<string | null>(null)
   const [cancelling, setCancelling] = useState(false)
+  const [modePrefs, setModePrefs] = useState<string[]>(['fast', 'proposal', 'contract'])
   const userTagIdsRef = useRef<string[]>([])
+  const modePrefsRef = useRef<string[]>(['fast', 'proposal', 'contract'])
 
   useEffect(() => {
     async function load() {
@@ -55,6 +57,13 @@ export default function FreelancerDashboard() {
       const { data: priv } = await supabase
         .from('account_private').select('balance').eq('profile_id', prof.id).single()
       setProfile({ ...prof, balance: priv?.balance ?? 0 })
+
+      // Preferência de tipos de trabalho (fallback: todos)
+      const prefs: string[] = Array.isArray(prof.job_mode_prefs) && prof.job_mode_prefs.length > 0
+        ? prof.job_mode_prefs
+        : ['fast', 'proposal', 'contract']
+      setModePrefs(prefs)
+      modePrefsRef.current = prefs
 
       // My accepted jobs (ativos — concluídos são arquivados e deletados)
       const { data: jobs } = await supabase
@@ -121,8 +130,9 @@ export default function FreelancerDashboard() {
           .from('job_tags').select('tag_id').eq('job_id', newJob.id)
         const jobTagIds = (jt ?? []).map((r: any) => r.tag_id)
         const hasMatch = jobTagIds.some(id => userTagIdsRef.current.includes(id))
+        const modeWanted = modePrefsRef.current.includes(newJob.mode ?? 'fast')
 
-        if (hasMatch) {
+        if (hasMatch && modeWanted) {
           const desc =
             newJob.mode === 'contract' ? `${formatCurrency(newJob.value)} · Contrato com etapas — veja e proponha!`
             : newJob.mode === 'proposal' ? `${formatCurrency(newJob.value)} sugerido · Envie sua proposta!`
@@ -188,6 +198,23 @@ export default function FreelancerDashboard() {
   }
 
 
+  async function toggleMode(mode: string) {
+    const next = modePrefs.includes(mode)
+      ? modePrefs.filter(m => m !== mode)
+      : [...modePrefs, mode]
+    if (next.length === 0) {
+      toast.warning('Mantenha pelo menos um tipo de trabalho ativo.')
+      return
+    }
+    setModePrefs(next)
+    modePrefsRef.current = next
+    if (profile) {
+      const { error } = await supabase
+        .from('profiles').update({ job_mode_prefs: next }).eq('id', profile.id)
+      if (error) toast.error('Não foi possível salvar sua preferência.')
+    }
+  }
+
   async function confirmAccept() {
     if (!confirmJob) return
     const job = confirmJob
@@ -236,6 +263,14 @@ export default function FreelancerDashboard() {
 
   const activeJobs = myJobs.filter(j => j.status === 'in_progress').length
   const balance    = profile.balance ?? 0
+
+  // Feed filtrado pela preferência de tipos do freelancer.
+  const visibleJobs = availableJobs.filter(j => modePrefs.includes(j.mode ?? 'fast'))
+  const MODE_CHIPS: { key: string; label: string; color: string }[] = [
+    { key: 'fast',     label: 'Rápidos',       color: '#d94e18' },
+    { key: 'proposal', label: 'Por propostas', color: '#a78bfa' },
+    { key: 'contract', label: 'Contratos',     color: '#a78bfa' },
+  ]
 
   const stats = [
     { icon: Wallet,       label: 'Saldo disponível', value: formatCurrency(balance), accent: true },
@@ -367,15 +402,41 @@ export default function FreelancerDashboard() {
           <p style={{ fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'rgba(185,190,200,0.5)', margin: 0 }}>
             Trabalhos disponíveis para você
           </p>
-          {availableJobs.length > 0 && (
+          {visibleJobs.length > 0 && (
             <span style={{
               fontSize: '0.58rem', fontWeight: 700, padding: '2px 8px',
               background: 'rgba(217,78,24,0.2)', border: '1px solid rgba(217,78,24,0.4)',
               color: '#d94e18',
             }}>
-              {availableJobs.length}
+              {visibleJobs.length}
             </span>
           )}
+        </div>
+
+        {/* Filtro de tipos de trabalho (preferência salva) */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
+          <span style={{ fontSize: 11, color: 'rgba(185,190,200,0.4)', marginRight: 2 }}>Mostrar:</span>
+          {MODE_CHIPS.map(chip => {
+            const active = modePrefs.includes(chip.key)
+            return (
+              <button key={chip.key} type="button" onClick={() => toggleMode(chip.key)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  padding: '6px 12px', cursor: 'pointer', fontFamily: 'inherit',
+                  background: active ? `${chip.color}1f` : 'transparent',
+                  border: `1px solid ${active ? `${chip.color}66` : 'rgba(255,255,255,0.12)'}`,
+                  color: active ? chip.color : 'rgba(185,190,200,0.5)',
+                  fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase',
+                  transition: 'all 0.15s',
+                }}>
+                <span style={{
+                  width: 7, height: 7, borderRadius: '50%',
+                  background: active ? chip.color : 'rgba(185,190,200,0.3)',
+                }} />
+                {chip.label}
+              </button>
+            )
+          })}
         </div>
 
         <div style={{ border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.02)' }}>
@@ -392,18 +453,20 @@ export default function FreelancerDashboard() {
                 Adicionar habilidades <ArrowRight size={11} />
               </Link>
             </div>
-          ) : availableJobs.length === 0 ? (
+          ) : visibleJobs.length === 0 ? (
             <div style={{ padding: '40px 32px', textAlign: 'center' }}>
               <p style={{ fontSize: 14, color: 'rgba(185,190,200,0.5)', margin: 0 }}>
-                Nenhum trabalho disponível no momento. Você será notificado quando aparecer um novo.
+                {availableJobs.length > 0
+                  ? 'Nenhum trabalho dos tipos selecionados. Ajuste o filtro acima para ver mais.'
+                  : 'Nenhum trabalho disponível no momento. Você será notificado quando aparecer um novo.'}
               </p>
             </div>
           ) : (
-            availableJobs.map((job: any, i: number) => (
+            visibleJobs.map((job: any, i: number) => (
               <div key={job.id} className="dash-avail-row" style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16,
                 padding: '20px 24px',
-                borderBottom: i < availableJobs.length - 1 ? '1px solid rgba(255,255,255,0.06)' : 'none',
+                borderBottom: i < visibleJobs.length - 1 ? '1px solid rgba(255,255,255,0.06)' : 'none',
               }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <p style={{ fontSize: 15, fontWeight: 600, color: '#fff', margin: '0 0 4px' }}>{job.title}</p>
