@@ -35,6 +35,17 @@ export async function archiveAndCleanJob(jobId: string): Promise<string> {
     ? calcFreelancerReceives(payment.job_value ?? job.value)
     : null
 
+  // ── Snapshot das etapas (contratos) — somem com o cascade ao deletar o job ──
+  let milestonesSnapshot: any[] | null = null
+  if (job.mode === 'contract') {
+    const { data: ms } = await admin
+      .from('contract_milestones')
+      .select('position, title, description, value, deadline_hours, status, delivery_note, delivered_at, approved_at')
+      .eq('job_id', jobId)
+      .order('position', { ascending: true })
+    milestonesSnapshot = ms ?? []
+  }
+
   // ── 3. Busca chat e compila log de mensagens ───────────────────────────────
   const { data: chat } = await admin
     .from('chats')
@@ -89,6 +100,7 @@ export async function archiveAndCleanJob(jobId: string): Promise<string> {
     chat_log:          chatLog,
     job_created_at:    job.created_at,
     completed_at:      job.completed_at ?? new Date().toISOString(),
+    milestones:        milestonesSnapshot,
   }).select('id').single()
 
   // ── 5. Deleta arquivos do chat no Storage ─────────────────────────────────

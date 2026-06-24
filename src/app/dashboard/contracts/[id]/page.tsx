@@ -8,7 +8,7 @@ import { formatCurrency } from '@/lib/utils'
 import { calcFreelancerReceives } from '@/lib/fees'
 import {
   ArrowLeft, Upload, X, FileText, CheckCircle, Loader, Download,
-  ThumbsUp, Clock, Lock, MessageSquare,
+  ThumbsUp, Clock, Lock, MessageSquare, AlertTriangle, Undo2,
 } from 'lucide-react'
 import Link from 'next/link'
 import { toast, Toaster } from 'sonner'
@@ -18,6 +18,8 @@ const msStatus: Record<string, { label: string; color: string }> = {
   in_progress: { label: 'Em andamento', color: '#d94e18' },
   delivered:   { label: 'Entregue',     color: '#C18F6B' },
   approved:    { label: 'Aprovada',     color: '#22c55e' },
+  disputed:    { label: 'Em arbitragem', color: '#f59e0b' },
+  refunded:    { label: 'Reembolsada',  color: '#ef4444' },
   cancelled:   { label: 'Cancelada',    color: '#ef4444' },
 }
 
@@ -31,6 +33,7 @@ export default function ContractDetailPage({ params }: { params: Promise<{ id: s
   const [job, setJob] = useState<any>(null)
   const [milestones, setMilestones] = useState<any[]>([])
   const [deliverMs, setDeliverMs] = useState<any>(null)
+  const [disputeMs, setDisputeMs] = useState<any>(null)
   const [approvingId, setApprovingId] = useState<string | null>(null)
   const [downloadingId, setDownloadingId] = useState<string | null>(null)
 
@@ -202,7 +205,7 @@ export default function ContractDetailPage({ params }: { params: Promise<{ id: s
                   </span>
                 )}
 
-                {/* Empresa: baixar + aprovar etapa entregue */}
+                {/* Empresa: baixar + aprovar + contestar etapa entregue */}
                 {isCompany && m.status === 'delivered' && (
                   <>
                     <button onClick={() => downloadMilestone(m.id)} disabled={downloadingId === m.id} style={btn('#a78bfa')}>
@@ -211,11 +214,26 @@ export default function ContractDetailPage({ params }: { params: Promise<{ id: s
                     <button onClick={() => approveMilestone(m.id)} disabled={approvingId === m.id} style={btn('#22c55e')}>
                       {approvingId === m.id ? <Loader size={11} style={{ animation: 'spin 1s linear infinite' }} /> : <ThumbsUp size={11} />} Aprovar etapa
                     </button>
+                    <button onClick={() => setDisputeMs(m)} style={btn('#f59e0b')}>
+                      <AlertTriangle size={11} /> Contestar
+                    </button>
                   </>
                 )}
                 {isCompany && m.status === 'in_progress' && (
                   <span style={{ fontSize: 11.5, color: 'rgba(185,190,200,0.45)', display: 'flex', alignItems: 'center', gap: 5 }}>
                     <Clock size={12} /> Em andamento pelo freelancer
+                  </span>
+                )}
+
+                {/* Em arbitragem (ambos os lados) */}
+                {m.status === 'disputed' && (
+                  <span style={{ fontSize: 11.5, color: '#f59e0b', display: 'flex', alignItems: 'center', gap: 5 }}>
+                    <AlertTriangle size={12} /> Em arbitragem — nossa equipe vai decidir
+                  </span>
+                )}
+                {m.status === 'refunded' && (
+                  <span style={{ fontSize: 11.5, color: '#ef4444', display: 'flex', alignItems: 'center', gap: 5 }}>
+                    <Undo2 size={12} /> Etapa reembolsada à empresa
                   </span>
                 )}
 
@@ -245,6 +263,94 @@ export default function ContractDetailPage({ params }: { params: Promise<{ id: s
           onSuccess={() => { setDeliverMs(null); load() }}
         />
       )}
+
+      {disputeMs && (
+        <MilestoneDisputeModal
+          milestone={disputeMs}
+          onClose={() => setDisputeMs(null)}
+          onSuccess={() => { setDisputeMs(null); load() }}
+        />
+      )}
+    </div>
+  )
+}
+
+function MilestoneDisputeModal({ milestone, onClose, onSuccess }: {
+  milestone: any
+  onClose: () => void
+  onSuccess: () => void
+}) {
+  const [reason, setReason] = useState('')
+  const [sending, setSending] = useState(false)
+
+  async function handleSubmit() {
+    if (!reason.trim()) { toast.error('Descreva o motivo da contestação.'); return }
+    setSending(true)
+    const res = await fetch(`/api/contracts/milestones/${milestone.id}/dispute`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reason: reason.trim() }),
+    })
+    const json = await res.json()
+    setSending(false)
+    if (!res.ok) { toast.error(json.error ?? 'Erro ao contestar.'); return }
+    toast.success('Contestação aberta. Nossa equipe vai analisar.')
+    onSuccess()
+  }
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 6000,
+      background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(6px)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, overflowY: 'auto',
+    }} onClick={e => { if (e.target === e.currentTarget) onClose() }}>
+      <div style={{ width: '100%', maxWidth: 460, background: '#0f1219', border: '1px solid rgba(245,158,11,0.25)', padding: 28 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, marginBottom: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <AlertTriangle size={16} style={{ color: '#f59e0b' }} />
+            </div>
+            <div>
+              <p style={{ fontSize: '0.58rem', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#f59e0b', margin: '0 0 2px' }}>Contestar etapa {milestone.position}</p>
+              <h3 style={{ fontSize: 16, fontWeight: 700, color: '#fff', margin: 0 }}>{milestone.title}</h3>
+            </div>
+          </div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(185,190,200,0.5)', padding: 4 }}>
+            <X size={18} />
+          </button>
+        </div>
+
+        <p style={{ fontSize: 13, color: 'rgba(185,190,200,0.6)', margin: '0 0 16px', lineHeight: 1.6 }}>
+          A etapa vai para análise da nossa equipe e o valor dela continua retido. Você é reembolsado se a contestação for aceita. As outras etapas não são afetadas.
+        </p>
+
+        <textarea value={reason} onChange={e => setReason(e.target.value)} rows={4} maxLength={2000}
+          placeholder="Descreva o problema com a entrega desta etapa..."
+          style={{
+            width: '100%', boxSizing: 'border-box', padding: '12px 14px', marginBottom: 20,
+            background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.12)',
+            color: '#fff', fontSize: 13, outline: 'none', resize: 'vertical', lineHeight: 1.5, fontFamily: 'inherit',
+          }} />
+
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button onClick={onClose} style={{
+            flex: 1, padding: '12px', background: 'transparent', border: '1px solid rgba(255,255,255,0.12)',
+            color: 'rgba(185,190,200,0.6)', cursor: 'pointer', fontSize: '0.65rem', fontWeight: 700,
+            letterSpacing: '0.1em', textTransform: 'uppercase', fontFamily: 'inherit',
+          }}>Cancelar</button>
+          <button onClick={handleSubmit} disabled={sending || !reason.trim()} style={{
+            flex: 2, padding: '12px',
+            background: sending || !reason.trim() ? 'rgba(245,158,11,0.25)' : '#f59e0b',
+            border: 'none', color: sending || !reason.trim() ? 'rgba(255,255,255,0.4)' : '#000',
+            cursor: sending || !reason.trim() ? 'not-allowed' : 'pointer', fontSize: '0.65rem', fontWeight: 700,
+            letterSpacing: '0.1em', textTransform: 'uppercase', fontFamily: 'inherit',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+          }}>
+            {sending ? <Loader size={13} style={{ animation: 'spin 1s linear infinite' }} /> : <AlertTriangle size={13} />}
+            {sending ? 'Enviando...' : 'Abrir contestação'}
+          </button>
+        </div>
+      </div>
     </div>
   )
 }

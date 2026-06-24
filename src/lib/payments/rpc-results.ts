@@ -36,3 +36,15 @@ export interface FundContractResult {
   already?: boolean
   error?: string
 }
+
+/** release_milestone / refund_milestone — arbitragem de disputa de etapa */
+export interface ResolveMilestoneResult {
+  ok: boolean
+  credited?: number   // release: 93% creditado ao freelancer
+  refunded?: number   // refund: value*1.10 a estornar à empresa (PIX manual)
+  completed?: boolean // o contrato foi concluído nesta resolução?
+  job_id?: string
+  company_id?: string
+  freelancer_id?: string
+  error?: string
+}

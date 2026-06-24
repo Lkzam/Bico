@@ -65,7 +65,13 @@ Cancelamento: deleta o job (log em cancelled_job_logs)
 - `contract` — empresa define etapas (milestones); freelancer propõe plano
   ajustado; empresa escolhe + paga total upfront em escrow; libera 93% por
   etapa aprovada. Tabela `contract_milestones`; RPCs `accept_contract_proposal`,
-  `fund_contract`, `approve_milestone`. Tela: `/dashboard/contracts/[id]`.
+  `fund_contract`, `approve_milestone`, `advance_contract`. Tela: `/dashboard/contracts/[id]`.
+  - **Disputa por etapa:** empresa contesta etapa entregue → `disputed`; admin
+    arbitra via `release_milestone` (credita 93%) ou `refund_milestone` (estorno
+    value*1.10, PIX manual). Etapas terminais: `approved`/`refunded`. O contrato
+    conclui quando nenhuma etapa está pendente/ativa/em disputa.
+  - Ao concluir, `archiveAndCleanJob` salva o snapshot das etapas em
+    `job_archives.milestones`.
 
 ---
 
