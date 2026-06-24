@@ -1,6 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 import { getPaymentGateway } from '@/lib/payments'
+import { settleConfirmedPayment } from '@/lib/payments/escrow'
 import { NextResponse } from 'next/server'
 
 export async function GET(req: Request) {
@@ -52,24 +53,12 @@ export async function GET(req: Request) {
       const status = await gateway.getChargeStatus(txid)
 
       if (status === 'paid') {
-        const now = new Date().toISOString()
-
-        await admin.from('payments').update({
-          status:         'paid_pending_approval',
-          paid_at:        now,
-        }).eq('id', payment.id).eq('status', 'pending')  // idempotente: só se ainda pending
-
-        // Avança o job conforme o fluxo (espelha o webhook)
-        if (job.status === 'delivered') {
-          await admin.from('jobs').update({
-            status:              'payment_received',
-            payment_received_at: now,
-          }).eq('id', job.id).eq('status', 'delivered')
-        } else if (job.status === 'awaiting_payment') {
-          // Contrato: in_progress + chat + 1ª etapa (atômico e idempotente)
-          await admin.rpc('fund_contract', { p_job_id: job.id })
-        }
-
+        // Mesma liquidação do webhook (helper único, idempotente).
+        await settleConfirmedPayment({
+          paymentId: payment.id,
+          jobId:     job.id,
+          jobStatus: job.status,
+        })
         console.log(`[payments/status] Reconciliado via gateway. txid=${txid} job=${job.id}`)
         return NextResponse.json({ status: 'paid_pending_approval' })
       }

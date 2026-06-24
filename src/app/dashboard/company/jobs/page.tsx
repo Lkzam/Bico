@@ -1011,6 +1011,12 @@ function PaymentModal({ job, onClose, onSuccess }: {
   const [loading, setLoading] = useState(false)
   const [copied, setCopied] = useState(false)
 
+  // Cartão (Pagar.me) — só habilita se a chave pública estiver configurada.
+  const pagarmeKey = process.env.NEXT_PUBLIC_PAGARME_PUBLIC_KEY
+  const [method, setMethod] = useState<'pix' | 'card'>('pix')
+  const [card, setCard] = useState({ number: '', holder: '', exp: '', cvv: '' })
+  const [cardLoading, setCardLoading] = useState(false)
+
   const totalValue = calcCompanyTotal(job.value)
   const freelancerReceives = calcFreelancerReceives(job.value)
   const platformFeeCompany = totalValue - job.value
@@ -1074,6 +1080,55 @@ function PaymentModal({ job, onClose, onSuccess }: {
     await navigator.clipboard.writeText(pix.qrcode)
     setCopied(true)
     setTimeout(() => setCopied(false), 2500)
+  }
+
+  async function payWithCard() {
+    if (!pagarmeKey) return
+    const number = card.number.replace(/\s/g, '')
+    const [mm, yy] = card.exp.split('/').map(s => s.trim())
+    if (number.length < 13 || !card.holder.trim() || !mm || !yy || card.cvv.length < 3) {
+      toast.error('Preencha os dados do cartão corretamente.')
+      return
+    }
+    setCardLoading(true)
+    try {
+      // 1) Tokeniza direto na Pagar.me (o PAN não passa pelo nosso servidor).
+      const tokRes = await fetch(`https://api.pagar.me/core/v5/tokens?appId=${encodeURIComponent(pagarmeKey)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'card',
+          card: { number, holder_name: card.holder.trim(), exp_month: Number(mm), exp_year: Number(yy.length === 2 ? `20${yy}` : yy), cvv: card.cvv },
+        }),
+      })
+      const tok = await tokRes.json()
+      if (!tokRes.ok || !tok?.id) {
+        toast.error('Não foi possível validar o cartão. Confira os dados.')
+        setCardLoading(false)
+        return
+      }
+      // 2) Cobra no nosso backend (com a chave secreta).
+      const res = await fetch('/api/payments/card', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ jobId: job.id, cardToken: tok.id }),
+      })
+      const json = await res.json()
+      setCardLoading(false)
+      if (!res.ok) { toast.error(json.error ?? 'Pagamento recusado.'); return }
+      if (json.status === 'processing') {
+        toast.info('Pagamento em processamento. Avisaremos assim que confirmar.')
+        onClose()
+        return
+      }
+      toast.success(job.mode === 'contract'
+        ? 'Pagamento confirmado! Contrato iniciado.'
+        : 'Pagamento confirmado! Arquivo liberado para análise.')
+      onSuccess()
+    } catch {
+      setCardLoading(false)
+      toast.error('Erro ao processar o cartão. Tente novamente.')
+    }
   }
 
   return (
@@ -1158,6 +1213,31 @@ function PaymentModal({ job, onClose, onSuccess }: {
             </p>
           </div>
 
+          {/* Seletor de método (só aparece se o cartão estiver configurado) */}
+          {pagarmeKey && (
+            <div style={{ display: 'flex', gap: 0, marginBottom: 20, border: '1px solid rgba(255,255,255,0.1)' }}>
+              {([
+                { key: 'pix',  label: 'PIX' },
+                { key: 'card', label: 'Cartão de crédito' },
+              ] as const).map((m, i) => {
+                const active = method === m.key
+                return (
+                  <button key={m.key} type="button" onClick={() => setMethod(m.key)}
+                    style={{
+                      flex: 1, padding: '11px', cursor: 'pointer', fontFamily: 'inherit',
+                      background: active ? 'rgba(34,197,94,0.12)' : 'transparent',
+                      borderLeft: i === 1 ? '1px solid rgba(255,255,255,0.1)' : 'none',
+                      border: 'none', borderBottom: active ? '2px solid #22c55e' : '2px solid transparent',
+                      color: active ? '#22c55e' : 'rgba(185,190,200,0.55)',
+                      fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase',
+                    }}>
+                    {m.label}
+                  </button>
+                )
+              })}
+            </div>
+          )}
+
           <p style={{ fontSize: '0.58rem', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'rgba(185,190,200,0.4)', marginBottom: 8 }}>
             O que você paga
           </p>
@@ -1194,6 +1274,34 @@ function PaymentModal({ job, onClose, onSuccess }: {
             </div>
           </div>
 
+          {/* Formulário do cartão */}
+          {method === 'card' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
+              {(() => {
+                const cardInput = {
+                  width: '100%', boxSizing: 'border-box' as const, padding: '11px 13px',
+                  background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.12)',
+                  color: '#fff', fontSize: 13, outline: 'none', fontFamily: 'inherit',
+                }
+                return <>
+                  <input value={card.number} onChange={e => setCard(c => ({ ...c, number: e.target.value }))}
+                    placeholder="Número do cartão" inputMode="numeric" style={cardInput} />
+                  <input value={card.holder} onChange={e => setCard(c => ({ ...c, holder: e.target.value }))}
+                    placeholder="Nome impresso no cartão" style={cardInput} />
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                    <input value={card.exp} onChange={e => setCard(c => ({ ...c, exp: e.target.value }))}
+                      placeholder="Validade MM/AA" inputMode="numeric" style={cardInput} />
+                    <input value={card.cvv} onChange={e => setCard(c => ({ ...c, cvv: e.target.value }))}
+                      placeholder="CVV" inputMode="numeric" style={cardInput} />
+                  </div>
+                  <p style={{ fontSize: 10.5, color: 'rgba(185,190,200,0.35)', margin: '2px 0 0' }}>
+                    🔒 Os dados do cartão vão direto e criptografados para o processador — não passam pelos nossos servidores.
+                  </p>
+                </>
+              })()}
+            </div>
+          )}
+
           <div style={{ display: 'flex', gap: 12 }}>
             <button onClick={onClose} style={{
               flex: 1, padding: '13px', background: 'transparent',
@@ -1203,19 +1311,35 @@ function PaymentModal({ job, onClose, onSuccess }: {
             }}>
               Cancelar
             </button>
-            <button onClick={generatePix} disabled={loading} style={{
-              flex: 2, padding: '13px',
-              background: loading ? 'rgba(34,197,94,0.3)' : '#22c55e',
-              border: 'none', color: loading ? 'rgba(255,255,255,0.5)' : '#000',
-              cursor: loading ? 'not-allowed' : 'pointer',
-              fontSize: '0.65rem', fontWeight: 700,
-              letterSpacing: '0.1em', textTransform: 'uppercase', fontFamily: 'inherit',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-              transition: 'all 0.2s',
-            }}>
-              {loading ? <Loader size={13} /> : <CreditCard size={13} />}
-              {loading ? 'Gerando PIX...' : `Pagar ${formatCurrency(totalValue)} via PIX`}
-            </button>
+            {method === 'pix' ? (
+              <button onClick={generatePix} disabled={loading} style={{
+                flex: 2, padding: '13px',
+                background: loading ? 'rgba(34,197,94,0.3)' : '#22c55e',
+                border: 'none', color: loading ? 'rgba(255,255,255,0.5)' : '#000',
+                cursor: loading ? 'not-allowed' : 'pointer',
+                fontSize: '0.65rem', fontWeight: 700,
+                letterSpacing: '0.1em', textTransform: 'uppercase', fontFamily: 'inherit',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                transition: 'all 0.2s',
+              }}>
+                {loading ? <Loader size={13} /> : <CreditCard size={13} />}
+                {loading ? 'Gerando PIX...' : `Pagar ${formatCurrency(totalValue)} via PIX`}
+              </button>
+            ) : (
+              <button onClick={payWithCard} disabled={cardLoading} style={{
+                flex: 2, padding: '13px',
+                background: cardLoading ? 'rgba(34,197,94,0.3)' : '#22c55e',
+                border: 'none', color: cardLoading ? 'rgba(255,255,255,0.5)' : '#000',
+                cursor: cardLoading ? 'not-allowed' : 'pointer',
+                fontSize: '0.65rem', fontWeight: 700,
+                letterSpacing: '0.1em', textTransform: 'uppercase', fontFamily: 'inherit',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                transition: 'all 0.2s',
+              }}>
+                {cardLoading ? <Loader size={13} /> : <CreditCard size={13} />}
+                {cardLoading ? 'Processando...' : `Pagar ${formatCurrency(totalValue)} no cartão`}
+              </button>
+            )}
           </div>
         </>)}
 

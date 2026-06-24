@@ -228,8 +228,10 @@ UI usa **inline styles** (não Tailwind). Tailwind apenas pontualmente.
 /api/jobs/[id]/dispute         POST  Abre contestação
 /api/jobs/[id]/edit            PATCH Edita job (sem alterar value)
 /api/jobs/[id]/pay             POST  Inicia pagamento PIX
-/api/payments/create           POST  Gera cobrança Efí Bank
-/api/payments/webhook          POST  Recebe notificação PIX (mTLS)
+/api/payments/create           POST  Gera cobrança PIX (Efí)
+/api/payments/card             POST  Pagamento por cartão (Pagar.me, entrada)
+/api/payments/webhook          POST  Recebe notificação PIX (Efí)
+/api/payments/pagarme-webhook  POST  Confirma cartão assíncrono (Pagar.me)
 /api/payments/register-webhook GET   Cadastra webhook na Efí (1x após deploy)
 /api/support/chat              POST  Chat IA streaming (Groq)
 /api/withdraw                  POST  Inicia saque PIX
@@ -285,4 +287,12 @@ ADMIN_USER_IDS=             # CSV de auth.users.id que acessa /dashboard/admin
 RESEND_API_KEY=             # email transacional (resend.com — free 3k/mês)
 ADMIN_EMAIL=                # destinatário das notificações de disputa
 EMAIL_FROM=                 # remetente verificado no Resend
+PAGARME_SECRET_KEY=                 # cartão (entrada) — chave secreta (server)
+NEXT_PUBLIC_PAGARME_PUBLIC_KEY=     # cartão — chave pública (tokeniza no client)
+PAGARME_WEBHOOK_TOKEN=              # token na URL do webhook Pagar.me
 ```
+
+> **Cartão (Pagar.me):** entrada apenas; saída continua só PIX (Efí). É
+> env-gated — sem `NEXT_PUBLIC_PAGARME_PUBLIC_KEY` a aba de cartão nem aparece.
+> Configurar o webhook no painel Pagar.me apontando para
+> `/api/payments/pagarme-webhook?token=PAGARME_WEBHOOK_TOKEN`.
