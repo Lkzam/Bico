@@ -35,7 +35,8 @@ Empresa posta job → freelancer aceita → trabalha → entrega arquivo → emp
 ## Regras de Negócio Críticas
 
 - **Taxa empresa:** +10% sobre o valor do job (pago no PIX)
-- **Taxa freelancer:** -7% no saque do saldo (não na aprovação)
+- **Taxa freelancer:** -7% no **crédito** do saldo (na aprovação da entrega / etapa).
+  O saldo já é líquido (93%); o saque (`withdraw_debit`) é 1:1, sem taxa.
 - **Escrow:** dinheiro fica retido na Efí Bank até empresa aprovar
 - **Auto-approve:** cron `GET /api/jobs/auto-approve` aprova após 5h sem resposta
 - **Valor do job (`value`):** IMUTÁVEL após criação. Para mudar valor → cancelar + criar novo
@@ -179,7 +180,7 @@ UI usa **inline styles** (não Tailwind). Tailwind apenas pontualmente.
 - `formatDeadline(hours)` → `"5h de prazo"` / `"2d de prazo"` / `"1d 12h de prazo"`
 - `formatCurrency(value)` → `"R$ 100,00"`
 - `calcCompanyTotal(value)` → `value * 1.10` (empresa paga 10% a mais)
-- `calcFreelancerReceives(value)` → `value * 0.93` (freelancer recebe 93% no saque)
+- `calcFreelancerReceives(value)` → `value * 0.93` (freelancer recebe 93%, creditado na aprovação)
 - `secureCompare(a, b)` → timing-safe, usar para todos os tokens/secrets
 
 ---
