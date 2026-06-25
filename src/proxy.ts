@@ -63,8 +63,10 @@ const RATE_RULES = [
 // Rotas internas (cron/webhook) — autenticam por token próprio, sem rate limit por IP
 const INTERNAL_PATTERNS = [
   '/api/payments/webhook',
+  '/api/payments/pagarme-webhook',
   '/api/payments/register-webhook',
   '/api/jobs/auto-approve',
+  '/api/contracts/auto-approve',
   '/api/withdraw/status',
 ]
 

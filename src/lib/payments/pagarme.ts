@@ -100,6 +100,32 @@ export async function chargeCard(p: ChargeCardParams): Promise<ChargeCardResult>
   return { status: normalized, chargeId: charge?.id ?? json?.id ?? null, message, raw: json }
 }
 
+/**
+ * Consulta o status REAL de uma cobrança direto na Pagar.me (reconciliação).
+ * Usado pelo webhook para NÃO confiar cegamente no payload recebido — só liquida
+ * se a própria Pagar.me confirmar 'paid'. Espelha a reconciliação ativa do PIX.
+ */
+export async function getChargeStatus(chargeId: string): Promise<'paid' | 'processing' | 'failed' | 'unknown'> {
+  const secret = process.env.PAGARME_SECRET_KEY
+  if (!secret || !chargeId) return 'unknown'
+  try {
+    const auth = Buffer.from(`${secret}:`).toString('base64')
+    const res = await fetch(`${PAGARME_API}/charges/${encodeURIComponent(chargeId)}`, {
+      headers: { Authorization: `Basic ${auth}` },
+    })
+    if (!res.ok) return 'unknown'
+    const json: any = await res.json().catch(() => null)
+    const st: string | undefined = json?.status
+    if (st === 'paid') return 'paid'
+    if (st === 'failed' || st === 'canceled') return 'failed'
+    if (st) return 'processing'
+    return 'unknown'
+  } catch (err) {
+    console.error('[pagarme] erro ao consultar charge:', err)
+    return 'unknown'
+  }
+}
+
 /** Evento normalizado de webhook do Pagar.me. */
 export interface PagarmeWebhookEvent {
   type: string

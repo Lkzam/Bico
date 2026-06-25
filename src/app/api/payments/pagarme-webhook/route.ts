@@ -1,6 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { secureCompare } from '@/lib/security'
-import { parsePagarmeWebhook } from '@/lib/payments/pagarme'
+import { parsePagarmeWebhook, getChargeStatus } from '@/lib/payments/pagarme'
 import { settleConfirmedPayment } from '@/lib/payments/escrow'
 import { NextResponse } from 'next/server'
 
@@ -40,12 +40,26 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true }) // já processado
     }
 
+    // ── Reconciliação ativa: NÃO confia no payload. Confirma na própria
+    // Pagar.me que a cobrança está realmente paga antes de liquidar o escrow.
+    // (Protege contra webhook forjado mesmo que vaze o token da URL.)
+    if (event.chargeId) {
+      const realStatus = await getChargeStatus(event.chargeId)
+      if (realStatus !== 'paid') {
+        console.warn(`[pagarme-webhook] status não confirmado (${realStatus}) p/ ref=${ref} — ignorando`)
+        return NextResponse.json({ ok: true })
+      }
+    } else {
+      console.warn(`[pagarme-webhook] sem chargeId p/ verificar ref=${ref} — ignorando`)
+      return NextResponse.json({ ok: true })
+    }
+
     const { data: job } = await admin
       .from('jobs').select('id, status').eq('id', payment.job_id).single()
     if (!job) return NextResponse.json({ ok: true })
 
     await settleConfirmedPayment({ paymentId: payment.id, jobId: job.id, jobStatus: job.status })
-    console.log(`[pagarme-webhook] cartão confirmado. ref=${ref} job=${job.id}`)
+    console.log(`[pagarme-webhook] cartão confirmado (reconciliado). ref=${ref} job=${job.id}`)
 
     return NextResponse.json({ ok: true })
   } catch (err) {
