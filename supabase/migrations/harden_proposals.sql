@@ -1,0 +1,15 @@
+-- ============================================================================
+-- N3: travar INSERT/UPDATE de proposals pelo client.
+-- Rodar no SQL Editor do Supabase.
+--
+-- Problema: a policy de UPDATE deixava o freelancer alterar a PRÓPRIA proposta
+-- enquanto 'pending' sem restrição de coluna → podia subir value/
+-- proposed_milestones depois de ser escolhido (bait-and-switch). A de INSERT
+-- direto ainda furava o gate de CPF.
+--
+-- O app cria propostas só via /api/proposals (admin/service_role, que valida
+-- CPF + valores) e NÃO atualiza proposals pelo client. Então revogamos as duas.
+-- SELECT continua (freelancer lê as próprias; empresa lê via admin).
+-- service_role (backend) não é afetado.
+-- ============================================================================
+revoke insert, update on public.proposals from authenticated, anon;
