@@ -330,19 +330,17 @@ function DeliveryModal({ job, profile, supabase, onClose, onSuccess }: {
       return
     }
 
-    // Atualiza o job para 'delivered' — salva o PATH (não URL pública) para bucket privado
-    const { error: updateError } = await supabase
-      .from('jobs')
-      .update({
-        status: 'delivered',
-        delivery_url: filePath,
-        delivery_note: note.trim() || null,
-        delivered_at: new Date().toISOString(),
-      })
-      .eq('id', job.id)
+    // Registra a entrega via rota de servidor (o update direto de jobs foi
+    // travado por segurança — ver /api/jobs/[id]/deliver).
+    const res = await fetch(`/api/jobs/${job.id}/deliver`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ deliveryUrl: filePath, deliveryNote: note.trim() || null }),
+    })
+    const json = await res.json()
 
-    if (updateError) {
-      toast.error('Erro ao registrar entrega: ' + updateError.message)
+    if (!res.ok) {
+      toast.error(json.error ?? 'Erro ao registrar entrega.')
       setUploading(false)
       return
     }
