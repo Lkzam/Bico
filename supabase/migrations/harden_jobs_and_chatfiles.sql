@@ -15,6 +15,7 @@ revoke update on public.jobs from authenticated, anon;
 -- Antes: qualquer autenticado gravava em qualquer pasta de chat (a leitura já
 -- era restrita; o upload não). Agora espelha a policy de SELECT.
 drop policy if exists "Authenticated users can upload chat files" on storage.objects;
+drop policy if exists "chat-files: participante envia" on storage.objects;
 
 create policy "chat-files: participante envia"
   on storage.objects for insert to authenticated
