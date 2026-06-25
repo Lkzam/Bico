@@ -22,7 +22,8 @@ export async function POST(req: Request) {
   try { body = await req.json() } catch {}
   const jobId     = typeof body.jobId === 'string' ? body.jobId : ''
   const cardToken = typeof body.cardToken === 'string' ? body.cardToken : ''
-  const installments = Number(body.installments) || 1
+  // Teto de parcelas (L2): entre 1 e 12, evita valor absurdo vindo do client.
+  const installments = Math.min(12, Math.max(1, Math.floor(Number(body.installments) || 1)))
   if (!jobId)     return NextResponse.json({ error: 'jobId obrigatório.' }, { status: 400 })
   if (!cardToken) return NextResponse.json({ error: 'Cartão inválido.' }, { status: 400 })
 

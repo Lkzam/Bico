@@ -79,11 +79,16 @@ const CONNECT = SUPABASE_HOST
   ? `'self' https://${SUPABASE_HOST} wss://${SUPABASE_HOST}`
   : `'self'`
 
-// Nota: 'unsafe-inline'/'unsafe-eval' em script-src são necessários para o
-// bootstrap do Next.js sem nonce. Endurecer depois com nonce-based CSP.
+// 'unsafe-eval' só é necessário em DEV (React usa eval p/ stacks de erro).
+// Em produção é removido (L1). 'unsafe-inline' em script/style permanece:
+// o app é todo inline-styles (style={{}}), que nonce não cobre, e remover
+// quebraria a UI. Endurecimento total exigiria reescrever o design system
+// + render dinâmico em todas as páginas (perde cache de CDN).
+const IS_DEV = process.env.NODE_ENV !== 'production'
+const SCRIPT_SRC = `script-src 'self' 'unsafe-inline'${IS_DEV ? " 'unsafe-eval'" : ''}`
 const CSP = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+  SCRIPT_SRC,
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https:",
   "font-src 'self' data:",
@@ -92,6 +97,7 @@ const CSP = [
   "base-uri 'self'",
   "form-action 'self'",
   "object-src 'none'",
+  "upgrade-insecure-requests",
 ].join('; ')
 
 // ── Headers de segurança ──────────────────────────────────────────────────────
