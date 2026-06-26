@@ -264,8 +264,8 @@ export default function CompanyJobsPage() {
           padding: '13px 24px', background: '#d94e18', color: '#fff', textDecoration: 'none',
           fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase',
         }}
-          onMouseOver={e => (e.currentTarget.style.background = '#c04010')}
-          onMouseOut={e => (e.currentTarget.style.background = '#d94e18')}>
+          onMouseOver={(e: React.MouseEvent<HTMLElement>) => (e.currentTarget.style.background = '#c04010')}
+          onMouseOut={(e: React.MouseEvent<HTMLElement>) => (e.currentTarget.style.background = '#d94e18')}>
           <Plus size={13} /> Publicar trabalho
         </Link>
       </div>
@@ -319,8 +319,8 @@ export default function CompanyJobsPage() {
                 borderBottom: i < jobs.length - 1 ? '1px solid rgba(255,255,255,0.06)' : 'none',
                 transition: 'background 0.15s',
               }}
-                onMouseOver={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.03)')}
-                onMouseOut={e => (e.currentTarget.style.background = 'transparent')}>
+                onMouseOver={(e: React.MouseEvent<HTMLElement>) => (e.currentTarget.style.background = 'rgba(255,255,255,0.03)')}
+                onMouseOut={(e: React.MouseEvent<HTMLElement>) => (e.currentTarget.style.background = 'transparent')}>
 
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
@@ -380,8 +380,8 @@ export default function CompanyJobsPage() {
                           letterSpacing: '0.08em', textTransform: 'uppercase',
                           fontFamily: 'inherit', transition: 'all 0.15s', whiteSpace: 'nowrap',
                         }}
-                        onMouseOver={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(34,197,94,0.22)' }}
-                        onMouseOut={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(34,197,94,0.12)' }}>
+                        onMouseOver={(e: React.MouseEvent<HTMLElement>) => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(34,197,94,0.22)' }}
+                        onMouseOut={(e: React.MouseEvent<HTMLElement>) => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(34,197,94,0.12)' }}>
                         <CreditCard size={11} /> Pagar
                       </button>
                     )}
@@ -400,8 +400,8 @@ export default function CompanyJobsPage() {
                           letterSpacing: '0.08em', textTransform: 'uppercase',
                           fontFamily: 'inherit', transition: 'all 0.15s', whiteSpace: 'nowrap',
                         }}
-                        onMouseOver={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(167,139,250,0.24)' }}
-                        onMouseOut={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(167,139,250,0.14)' }}>
+                        onMouseOver={(e: React.MouseEvent<HTMLElement>) => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(167,139,250,0.24)' }}
+                        onMouseOut={(e: React.MouseEvent<HTMLElement>) => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(167,139,250,0.14)' }}>
                         <CreditCard size={11} /> Pagar contrato
                       </button>
                     )}
@@ -421,8 +421,8 @@ export default function CompanyJobsPage() {
                           letterSpacing: '0.08em', textTransform: 'uppercase',
                           fontFamily: 'inherit', transition: 'all 0.15s', whiteSpace: 'nowrap',
                         }}
-                        onMouseOver={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(59,130,246,0.18)' }}
-                        onMouseOut={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(59,130,246,0.08)' }}>
+                        onMouseOver={(e: React.MouseEvent<HTMLElement>) => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(59,130,246,0.18)' }}
+                        onMouseOut={(e: React.MouseEvent<HTMLElement>) => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(59,130,246,0.08)' }}>
                         <Pencil size={11} /> Editar
                       </button>
                     )}
@@ -442,8 +442,8 @@ export default function CompanyJobsPage() {
                           letterSpacing: '0.08em', textTransform: 'uppercase',
                           fontFamily: 'inherit', transition: 'all 0.15s', whiteSpace: 'nowrap',
                         }}
-                        onMouseOver={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(239,68,68,0.18)' }}
-                        onMouseOut={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(239,68,68,0.08)' }}>
+                        onMouseOver={(e: React.MouseEvent<HTMLElement>) => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(239,68,68,0.18)' }}
+                        onMouseOut={(e: React.MouseEvent<HTMLElement>) => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(239,68,68,0.08)' }}>
                         <Trash2 size={11} /> Cancelar
                       </button>
                     )}
@@ -528,8 +528,8 @@ export default function CompanyJobsPage() {
                           letterSpacing: '0.08em', textTransform: 'uppercase',
                           fontFamily: 'inherit', transition: 'all 0.15s', whiteSpace: 'nowrap',
                         }}
-                        onMouseOver={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(34,197,94,0.22)' }}
-                        onMouseOut={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(34,197,94,0.12)' }}>
+                        onMouseOver={(e: React.MouseEvent<HTMLElement>) => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(34,197,94,0.22)' }}
+                        onMouseOut={(e: React.MouseEvent<HTMLElement>) => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(34,197,94,0.12)' }}>
                         <ThumbsUp size={11} /> Aprovar entrega
                       </button>
 
@@ -546,8 +546,8 @@ export default function CompanyJobsPage() {
                           letterSpacing: '0.08em', textTransform: 'uppercase',
                           fontFamily: 'inherit', transition: 'all 0.15s', whiteSpace: 'nowrap',
                         }}
-                        onMouseOver={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(245,158,11,0.18)' }}
-                        onMouseOut={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(245,158,11,0.08)' }}>
+                        onMouseOver={(e: React.MouseEvent<HTMLElement>) => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(245,158,11,0.18)' }}
+                        onMouseOut={(e: React.MouseEvent<HTMLElement>) => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(245,158,11,0.08)' }}>
                         <AlertTriangle size={11} /> Contestar
                       </button>
                     </div>

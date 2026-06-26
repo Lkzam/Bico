@@ -290,7 +290,16 @@ EMAIL_FROM=                 # remetente verificado no Resend
 PAGARME_SECRET_KEY=                 # cartão (entrada) — chave secreta (server)
 NEXT_PUBLIC_PAGARME_PUBLIC_KEY=     # cartão — chave pública (tokeniza no client)
 PAGARME_WEBHOOK_TOKEN=              # token na URL do webhook Pagar.me
+NEXT_PUBLIC_SENTRY_DSN=             # observabilidade (Sentry) — gated: sem isso, no-op
+SENTRY_ORG=                        # (opcional) upload de source maps no build
+SENTRY_PROJECT=                    # (opcional) idem
+SENTRY_AUTH_TOKEN=                 # (opcional) idem — sem ele, upload é pulado
 ```
+
+> **Sentry:** captura erros de frontend e backend. É **env-gated** — sem
+> `NEXT_PUBLIC_SENTRY_DSN`, o `withSentryConfig` nem é aplicado (build idêntico
+> ao atual). Alertas de falha de dinheiro/entrega continuam indo por email
+> (`notifyAdminAlert` em `lib/email.ts`) independente do Sentry.
 
 > **Cartão (Pagar.me):** entrada apenas; saída continua só PIX (Efí). É
 > env-gated — sem `NEXT_PUBLIC_PAGARME_PUBLIC_KEY` a aba de cartão nem aparece.

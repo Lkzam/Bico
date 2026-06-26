@@ -87,8 +87,8 @@ export default function CompanyDashboard() {
           fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase',
           transition: 'background 0.2s',
         }}
-          onMouseOver={e => (e.currentTarget.style.background = '#c04010')}
-          onMouseOut={e => (e.currentTarget.style.background = '#d94e18')}>
+          onMouseOver={(e: React.MouseEvent<HTMLElement>) => (e.currentTarget.style.background = '#c04010')}
+          onMouseOut={(e: React.MouseEvent<HTMLElement>) => (e.currentTarget.style.background = '#d94e18')}>
           <Plus size={13} /> Publicar trabalho
         </Link>
       </div>
@@ -149,8 +149,8 @@ export default function CompanyDashboard() {
                 borderBottom: i < jobs.length - 1 ? '1px solid rgba(255,255,255,0.06)' : 'none',
                 transition: 'background 0.15s',
               }}
-                onMouseOver={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.03)')}
-                onMouseOut={e => (e.currentTarget.style.background = 'transparent')}>
+                onMouseOver={(e: React.MouseEvent<HTMLElement>) => (e.currentTarget.style.background = 'rgba(255,255,255,0.03)')}
+                onMouseOut={(e: React.MouseEvent<HTMLElement>) => (e.currentTarget.style.background = 'transparent')}>
                 <div>
                   <p style={{ fontSize: 14, fontWeight: 600, color: '#fff', margin: '0 0 3px' }}>{job.title}</p>
                   <p style={{ fontSize: 12, color: 'rgba(185,190,200,0.4)', margin: 0 }}>

@@ -98,8 +98,8 @@ export default function Home() {
           {/* Desktop nav */}
           <div className="nav-desktop" style={{ alignItems: 'center', gap: 12 }}>
             <Link href="/login" style={{ fontSize: 14, color: 'rgba(185,190,200,0.78)', textDecoration: 'none', padding: '8px 16px', transition: 'color 0.2s' }}
-              onMouseOver={e => (e.currentTarget.style.color = '#d4783a')}
-              onMouseOut={e => (e.currentTarget.style.color = 'rgba(185,190,200,0.78)')}>
+              onMouseOver={(e: React.MouseEvent<HTMLElement>) => (e.currentTarget.style.color = '#d4783a')}
+              onMouseOut={(e: React.MouseEvent<HTMLElement>) => (e.currentTarget.style.color = 'rgba(185,190,200,0.78)')}>
               Entrar
             </Link>
             <Link href="/register" style={{
@@ -108,8 +108,8 @@ export default function Home() {
               background: '#1e2535', color: '#fff', textDecoration: 'none',
               transition: 'background 0.2s, box-shadow 0.2s',
             }}
-              onMouseOver={e => { e.currentTarget.style.background = '#d94e18'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(217,78,24,0.35)'; }}
-              onMouseOut={e => { e.currentTarget.style.background = '#1e2535'; e.currentTarget.style.boxShadow = 'none'; }}>
+              onMouseOver={(e: React.MouseEvent<HTMLElement>) => { e.currentTarget.style.background = '#d94e18'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(217,78,24,0.35)'; }}
+              onMouseOut={(e: React.MouseEvent<HTMLElement>) => { e.currentTarget.style.background = '#1e2535'; e.currentTarget.style.boxShadow = 'none'; }}>
               Começar grátis
             </Link>
           </div>
@@ -229,8 +229,8 @@ export default function Home() {
               textDecoration: 'none', borderRadius: 4,
               transition: 'background 0.2s, box-shadow 0.2s',
             }}
-              onMouseOver={e => { e.currentTarget.style.background = '#c04010'; e.currentTarget.style.boxShadow = '0 4px 20px rgba(217,78,24,0.4)'; }}
-              onMouseOut={e => { e.currentTarget.style.background = '#d94e18'; e.currentTarget.style.boxShadow = 'none'; }}>
+              onMouseOver={(e: React.MouseEvent<HTMLElement>) => { e.currentTarget.style.background = '#c04010'; e.currentTarget.style.boxShadow = '0 4px 20px rgba(217,78,24,0.4)'; }}
+              onMouseOut={(e: React.MouseEvent<HTMLElement>) => { e.currentTarget.style.background = '#d94e18'; e.currentTarget.style.boxShadow = 'none'; }}>
               Quero fazer bicos <ArrowRight size={13} />
             </Link>
             <Link href="/register" style={{
@@ -241,8 +241,8 @@ export default function Home() {
               textDecoration: 'none', borderRadius: 4,
               transition: 'border-color 0.2s, color 0.2s',
             }}
-              onMouseOver={e => { e.currentTarget.style.borderColor = '#d94e18'; e.currentTarget.style.color = '#fff'; }}
-              onMouseOut={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.18)'; e.currentTarget.style.color = 'rgba(255,255,255,0.8)'; }}>
+              onMouseOver={(e: React.MouseEvent<HTMLElement>) => { e.currentTarget.style.borderColor = '#d94e18'; e.currentTarget.style.color = '#fff'; }}
+              onMouseOut={(e: React.MouseEvent<HTMLElement>) => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.18)'; e.currentTarget.style.color = 'rgba(255,255,255,0.8)'; }}>
               Sou empresa
             </Link>
           </div>
@@ -321,8 +321,8 @@ export default function Home() {
               padding: '15px 32px', background: '#1e2535', color: '#fff',
               textDecoration: 'none', transition: 'background 0.2s',
             }}
-              onMouseOver={e => (e.currentTarget.style.background = '#d94e18')}
-              onMouseOut={e => (e.currentTarget.style.background = '#1e2535')}>
+              onMouseOver={(e: React.MouseEvent<HTMLElement>) => (e.currentTarget.style.background = '#d94e18')}
+              onMouseOut={(e: React.MouseEvent<HTMLElement>) => (e.currentTarget.style.background = '#1e2535')}>
               Criar conta grátis
             </Link>
           </div>
@@ -408,8 +408,8 @@ export default function Home() {
               padding: '16px 36px', background: '#d94e18', color: '#fff',
               textDecoration: 'none', transition: 'background 0.2s, box-shadow 0.2s',
             }}
-              onMouseOver={e => { e.currentTarget.style.background = '#c04010'; e.currentTarget.style.boxShadow = '0 4px 24px rgba(217,78,24,0.4)'; }}
-              onMouseOut={e => { e.currentTarget.style.background = '#d94e18'; e.currentTarget.style.boxShadow = 'none'; }}>
+              onMouseOver={(e: React.MouseEvent<HTMLElement>) => { e.currentTarget.style.background = '#c04010'; e.currentTarget.style.boxShadow = '0 4px 24px rgba(217,78,24,0.4)'; }}
+              onMouseOut={(e: React.MouseEvent<HTMLElement>) => { e.currentTarget.style.background = '#d94e18'; e.currentTarget.style.boxShadow = 'none'; }}>
               Criar conta grátis <ArrowRight size={13} />
             </Link>
           </div>
@@ -445,13 +445,13 @@ function StatsCard({ num, title, sub, label }: { num: string, title: string, sub
       alignItems: 'center', textAlign: 'center',
       cursor: 'default', transition: 'all 0.3s ease',
     }}
-      onMouseOver={e => {
+      onMouseOver={(e: React.MouseEvent<HTMLElement>) => {
         const el = e.currentTarget as HTMLDivElement
         el.style.transform = 'translateY(-8px)'
         el.style.boxShadow = '0 16px 48px rgba(217,78,24,0.15)'
         el.style.borderColor = 'rgba(217,78,24,0.3)'
       }}
-      onMouseOut={e => {
+      onMouseOut={(e: React.MouseEvent<HTMLElement>) => {
         const el = e.currentTarget as HTMLDivElement
         el.style.transform = 'translateY(0)'
         el.style.boxShadow = 'none'
@@ -473,13 +473,13 @@ function FeatureCard({ icon, title, desc }: { icon: string, title: string, desc:
       borderRadius: 16, padding: '36px 32px',
       transition: 'all 0.3s ease',
     }}
-      onMouseOver={e => {
+      onMouseOver={(e: React.MouseEvent<HTMLElement>) => {
         const el = e.currentTarget as HTMLDivElement
         el.style.borderColor = 'rgba(217,78,24,0.3)'
         el.style.transform = 'translateY(-4px)'
         el.style.boxShadow = '0 16px 48px rgba(217,78,24,0.1)'
       }}
-      onMouseOut={e => {
+      onMouseOut={(e: React.MouseEvent<HTMLElement>) => {
         const el = e.currentTarget as HTMLDivElement
         el.style.borderColor = 'rgba(255,255,255,0.1)'
         el.style.transform = 'translateY(0)'
@@ -501,13 +501,13 @@ function TestimonialCard({ text, name, role }: { text: string, name: string, rol
       display: 'flex', flexDirection: 'column', gap: 28,
       transition: 'all 0.3s ease',
     }}
-      onMouseOver={e => {
+      onMouseOver={(e: React.MouseEvent<HTMLElement>) => {
         const el = e.currentTarget as HTMLDivElement
         el.style.borderColor = 'rgba(193,143,107,0.3)'
         el.style.background = 'rgba(193,143,107,0.05)'
         el.style.transform = 'translateY(-4px)'
       }}
-      onMouseOut={e => {
+      onMouseOut={(e: React.MouseEvent<HTMLElement>) => {
         const el = e.currentTarget as HTMLDivElement
         el.style.borderColor = 'rgba(255,255,255,0.1)'
         el.style.background = 'rgba(255,255,255,0.02)'

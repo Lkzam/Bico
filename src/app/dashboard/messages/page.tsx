@@ -181,8 +181,8 @@ export default function MessagesPage() {
                   background: hasUnread ? 'rgba(217,78,24,0.05)' : 'transparent',
                   borderLeft: hasUnread ? '2px solid rgba(217,78,24,0.6)' : '2px solid transparent',
                 }}
-                onMouseOver={e => (e.currentTarget.style.background = hasUnread ? 'rgba(217,78,24,0.1)' : 'rgba(255,255,255,0.03)')}
-                onMouseOut={e => (e.currentTarget.style.background = hasUnread ? 'rgba(217,78,24,0.05)' : 'transparent')}
+                onMouseOver={(e: React.MouseEvent<HTMLElement>) => (e.currentTarget.style.background = hasUnread ? 'rgba(217,78,24,0.1)' : 'rgba(255,255,255,0.03)')}
+                onMouseOut={(e: React.MouseEvent<HTMLElement>) => (e.currentTarget.style.background = hasUnread ? 'rgba(217,78,24,0.05)' : 'transparent')}
               >
                 {/* Avatar */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
