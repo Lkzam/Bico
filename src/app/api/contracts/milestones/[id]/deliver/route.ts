@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { notifyAdminAlert } from '@/lib/email'
 import { NextResponse } from 'next/server'
 
 // POST /api/contracts/milestones/[id]/deliver
@@ -63,6 +64,11 @@ export async function POST(
 
   if (updErr) {
     console.error('[milestones/deliver] update error:', updErr)
+    await notifyAdminAlert({
+      event:   'delivery_failed',
+      message: 'Freelancer fez upload mas a entrega de etapa não foi registrada (contrato).',
+      context: { jobId: job.id, milestoneId: ms.id, freelancerId: profile.id, error: updErr.message },
+    })
     return NextResponse.json({ error: 'Erro ao registrar entrega.' }, { status: 500 })
   }
 

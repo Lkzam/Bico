@@ -127,6 +127,54 @@ Job ID: ${params.jobId}`
   })
 }
 
+/**
+ * Alerta OPERACIONAL para o admin (você) — falhas que você precisa saber ANTES
+ * do cliente reclamar: webhook, saque, pagamento, entrega, arquivamento.
+ *
+ * Sempre loga no console (fica nos logs da Vercel mesmo sem email). Se Resend +
+ * ADMIN_EMAIL estiverem configurados, manda email também. Nunca lança — é
+ * best-effort e não pode quebrar o fluxo que o chamou.
+ */
+export async function notifyAdminAlert(opts: {
+  event: string                         // ex: 'withdraw_failed', 'webhook_error'
+  message: string                       // resumo legível
+  context?: Record<string, unknown>     // ids, valores, erro do PSP, etc.
+}): Promise<void> {
+  // 1. Log sempre (grep-able nos logs)
+  console.error(`[ALERT] ${opts.event}: ${opts.message}`, opts.context ?? {})
+
+  // 2. Email best-effort
+  try {
+    const adminEmail = process.env.ADMIN_EMAIL
+    if (!adminEmail) return
+
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
+    const when   = new Date().toLocaleString('pt-BR')
+    const ctx    = opts.context && Object.keys(opts.context).length > 0
+      ? `<pre style="white-space:pre-wrap;word-break:break-word;font-size:12px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);padding:12px;color:#e2e8f0;margin:0 0 16px;">${escapeHtml(JSON.stringify(opts.context, null, 2))}</pre>`
+      : ''
+
+    const html = `
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"></head>
+<body style="font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;background:#0b0e17;color:#fff;padding:24px;">
+  <div style="max-width:520px;margin:0 auto;background:#0f1219;border:1px solid rgba(239,68,68,0.35);padding:28px;">
+    <div style="font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:#ef4444;font-weight:700;margin-bottom:8px;">Bico · Alerta operacional</div>
+    <h1 style="font-size:19px;margin:0 0 6px;color:#fff;">⚠️ ${escapeHtml(opts.event)}</h1>
+    <p style="margin:0 0 16px;color:#cbd5e1;line-height:1.5;">${escapeHtml(opts.message)}</p>
+    ${ctx}
+    <p style="margin:0;font-size:11px;color:#64748b;">${when}${appUrl ? ` · ${escapeHtml(appUrl)}` : ''}</p>
+  </div>
+</body></html>`
+
+    const text = `[Bico] ALERTA: ${opts.event}\n\n${opts.message}\n\n${opts.context ? JSON.stringify(opts.context, null, 2) : ''}\n\n${when}`
+
+    await sendEmail({ to: adminEmail, subject: `[Bico] ⚠️ ${opts.event}`, html, text })
+  } catch (err) {
+    console.error('[email] notifyAdminAlert falhou:', err)
+  }
+}
+
 function escapeHtml(s: string): string {
   return s
     .replace(/&/g, '&amp;')

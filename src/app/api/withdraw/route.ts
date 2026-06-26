@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { NextResponse } from 'next/server'
 import { getPaymentGateway } from '@/lib/payments'
 import { isValidPixKey } from '@/lib/security'
+import { notifyAdminAlert } from '@/lib/email'
 
 export async function POST(req: Request) {
   const supabase = await createClient()
@@ -98,5 +99,11 @@ export async function POST(req: Request) {
       error_message: result.error,
     }).eq('id', withdrawal.id),
   ])
+  // Alerta operacional: payout falhando pode ser problema no PSP/saldo Efí.
+  await notifyAdminAlert({
+    event:   'withdraw_failed',
+    message: `Saque PIX falhou e foi revertido. O freelancer pode estar sem conseguir sacar.`,
+    context: { withdrawalId: withdrawal.id, profileId: profile.id, amount: parsedAmount, error: result.error },
+  })
   return NextResponse.json({ error: result.error }, { status: 500 })
 }

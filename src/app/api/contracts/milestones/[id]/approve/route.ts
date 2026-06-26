@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { archiveAndCleanJob } from '@/lib/archiveJob'
+import { notifyAdminAlert } from '@/lib/email'
 import type { ApproveMilestoneResult } from '@/lib/payments/rpc-results'
 import { NextResponse } from 'next/server'
 
@@ -59,6 +60,11 @@ export async function POST(
       archiveId = await archiveAndCleanJob(result.job_id)
     } catch (err) {
       console.error('[milestones/approve] erro ao arquivar contrato:', err)
+      await notifyAdminAlert({
+        event:   'archive_failed_after_credit',
+        message: 'Última etapa do contrato aprovada e creditada, mas o arquivamento falhou — estado inconsistente.',
+        context: { jobId: result.job_id, error: err instanceof Error ? err.message : String(err) },
+      })
     }
   }
 

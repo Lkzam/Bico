@@ -2,6 +2,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { secureCompare } from '@/lib/security'
 import { parsePagarmeWebhook, getChargeStatus } from '@/lib/payments/pagarme'
 import { settleConfirmedPayment } from '@/lib/payments/escrow'
+import { notifyAdminAlert } from '@/lib/email'
 import { NextResponse } from 'next/server'
 
 // POST /api/payments/pagarme-webhook?token=XXX
@@ -64,6 +65,11 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true })
   } catch (err) {
     console.error('[pagarme-webhook] erro:', err)
+    await notifyAdminAlert({
+      event:   'webhook_card_error',
+      message: 'O webhook de cartão (Pagar.me) lançou erro ao processar. Pagamentos por cartão podem não estar sendo confirmados.',
+      context: { error: err instanceof Error ? err.message : String(err) },
+    })
     return NextResponse.json({ ok: false })
   }
 }

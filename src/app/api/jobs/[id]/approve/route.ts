@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { archiveAndCleanJob } from '@/lib/archiveJob'
+import { notifyAdminAlert } from '@/lib/email'
 import { NextResponse } from 'next/server'
 
 export async function POST(
@@ -52,6 +53,11 @@ export async function POST(
     archiveId = await archiveAndCleanJob(jobId)
   } catch (err) {
     console.error(`[approve] Falha ao arquivar job ${jobId}:`, err)
+    await notifyAdminAlert({
+      event:   'archive_failed_after_credit',
+      message: 'Freelancer foi creditado mas o arquivamento do job falhou — estado inconsistente, precisa de limpeza manual.',
+      context: { jobId, error: err instanceof Error ? err.message : String(err) },
+    })
   }
 
   return NextResponse.json({ ok: true, archiveId })

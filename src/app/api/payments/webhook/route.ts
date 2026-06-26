@@ -2,6 +2,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { secureCompare } from '@/lib/security'
 import { getPaymentGateway } from '@/lib/payments'
 import { settleConfirmedPayment } from '@/lib/payments/escrow'
+import { notifyAdminAlert } from '@/lib/email'
 import { NextResponse } from 'next/server'
 
 // O PSP envia um POST neste endpoint quando o PIX é pago.
@@ -73,6 +74,12 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true })
   } catch (err) {
     console.error('[webhook] Erro:', err)
+    // Alerta: webhook PIX falhando = pagamentos podem não ser confirmados.
+    await notifyAdminAlert({
+      event:   'webhook_pix_error',
+      message: 'O webhook PIX (Efí) lançou erro ao processar. Pagamentos podem não estar sendo confirmados — confira /api/payments/diagnose.',
+      context: { error: err instanceof Error ? err.message : String(err) },
+    })
     // Retorna 200 para o PSP não retentar indefinidamente
     return NextResponse.json({ ok: false })
   }
