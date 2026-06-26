@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 export async function POST() {
   const supabase = await createClient()
@@ -9,7 +10,10 @@ export async function POST() {
     return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 })
   }
 
-  const { error } = await supabase
+  // Usa admin: 'terms_accepted_at' não está no grant de colunas do client
+  // (H1 revogou UPDATE amplo de profiles). A escrita é validada pelo user_id.
+  const admin = createAdminClient()
+  const { error } = await admin
     .from('profiles')
     .update({ terms_accepted_at: new Date().toISOString() })
     .eq('user_id', user.id)

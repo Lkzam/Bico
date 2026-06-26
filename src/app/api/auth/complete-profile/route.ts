@@ -40,8 +40,8 @@ export async function POST(req: NextRequest) {
   const { data: created, error } = await admin.from('profiles').insert({
     user_id: user.id,
     role,
-    name,
-    bio: bio || null,
+    name: String(name).trim().slice(0, 120),
+    bio: bio ? String(bio).trim().slice(0, 2000) : null,
     terms_accepted_at: new Date().toISOString(),
   }).select('id').single()
 
