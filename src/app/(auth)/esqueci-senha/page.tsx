@@ -24,8 +24,10 @@ function ForgotPasswordInner() {
     e.preventDefault()
     setLoading(true)
 
-    const redirectTo = `${window.location.origin}/auth/callback?next=/redefinir-senha`
-    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo })
+    // A URL do link é montada no template de email do Supabase
+    // ({{ .SiteURL }}/auth/confirm?token_hash=...&type=recovery&next=/redefinir-senha),
+    // então não passamos redirectTo aqui.
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim())
 
     setLoading(false)
 
