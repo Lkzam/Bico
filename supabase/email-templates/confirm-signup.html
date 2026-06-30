@@ -1,0 +1,111 @@
+<!--
+  Template de email "Confirm signup" do Bico.
+  Colar em: Supabase → Authentication → Email Templates → Confirm signup.
+  O link usa token_hash (funciona entre navegadores/dispositivos diferentes) e
+  aponta para o route handler /auth/confirm, que confirma a conta, cria o perfil
+  (a partir do user_metadata) e leva ao /dashboard. Requer a Site URL correta no
+  Supabase (ex.: https://bico-jobs.vercel.app), pois {{ .SiteURL }} vem dela.
+  Layout em tabela + estilos inline (compatível com Outlook/Gmail/Apple Mail).
+-->
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0;padding:0;background-color:#0b0e17;">
+  <tr>
+    <td align="center" style="padding:40px 16px;">
+
+      <!-- Card -->
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;background-color:#0f1219;border:1px solid rgba(255,255,255,0.08);border-radius:14px;overflow:hidden;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+
+        <!-- Logo / topo -->
+        <tr>
+          <td style="padding:36px 40px 0 40px;">
+            <span style="font-size:26px;font-weight:700;color:#ffffff;letter-spacing:-0.5px;">Bico</span>
+          </td>
+        </tr>
+
+        <!-- Eyebrow -->
+        <tr>
+          <td style="padding:24px 40px 0 40px;">
+            <span style="display:inline-block;font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#d94e18;">
+              &#9679;&nbsp;&nbsp;Bem-vindo ao Bico
+            </span>
+          </td>
+        </tr>
+
+        <!-- Título -->
+        <tr>
+          <td style="padding:14px 40px 0 40px;">
+            <h1 style="margin:0;font-size:28px;line-height:1.15;font-weight:800;color:#ffffff;letter-spacing:-0.5px;">
+              Confirme seu email
+            </h1>
+          </td>
+        </tr>
+
+        <!-- Texto -->
+        <tr>
+          <td style="padding:16px 40px 0 40px;">
+            <p style="margin:0;font-size:15px;line-height:1.6;color:#b9bec8;">
+              Falta só um passo para ativar sua conta. Clique no botão abaixo para
+              confirmar seu email e começar a usar o Bico.
+            </p>
+          </td>
+        </tr>
+
+        <!-- Botão -->
+        <tr>
+          <td style="padding:28px 40px 0 40px;">
+            <table role="presentation" cellpadding="0" cellspacing="0">
+              <tr>
+                <td align="center" bgcolor="#d94e18" style="border-radius:8px;">
+                  <a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&amp;type=email&amp;next=/dashboard" target="_blank"
+                     style="display:inline-block;padding:15px 36px;font-size:13px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#ffffff;text-decoration:none;border-radius:8px;">
+                    Confirmar email
+                  </a>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <!-- Aviso / fallback -->
+        <tr>
+          <td style="padding:24px 40px 0 40px;">
+            <p style="margin:0;font-size:13px;line-height:1.6;color:#7c828e;">
+              Se o botão não funcionar, copie e cole este endereço no navegador:
+            </p>
+            <p style="margin:10px 0 0 0;font-size:12px;line-height:1.5;word-break:break-all;">
+              <a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&amp;type=email&amp;next=/dashboard" target="_blank" style="color:#d4783a;text-decoration:none;">{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&amp;type=email&amp;next=/dashboard</a>
+            </p>
+          </td>
+        </tr>
+
+        <!-- Divisória -->
+        <tr>
+          <td style="padding:28px 40px 0 40px;">
+            <div style="height:1px;background-color:rgba(255,255,255,0.08);font-size:0;line-height:0;">&nbsp;</div>
+          </td>
+        </tr>
+
+        <!-- Nota -->
+        <tr>
+          <td style="padding:20px 40px 36px 40px;">
+            <p style="margin:0;font-size:12px;line-height:1.6;color:#7c828e;">
+              Se você não criou uma conta no Bico, pode ignorar este email com segurança.
+            </p>
+          </td>
+        </tr>
+
+      </table>
+
+      <!-- Rodapé -->
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+        <tr>
+          <td align="center" style="padding:24px 40px;">
+            <p style="margin:0;font-size:11px;color:#5a606b;">
+              &copy; Bico &middot; Marketplace de freelancers
+            </p>
+          </td>
+        </tr>
+      </table>
+
+    </td>
+  </tr>
+</table>

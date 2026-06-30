@@ -1,6 +1,19 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { NextResponse } from 'next/server'
+import { parseBody, uuid } from '@/lib/validation'
+import { z } from 'zod'
+
+// Esquema leniente: trava o jobId (uuid) e o tamanho da mensagem; valor, prazo e
+// milestones seguem na lógica de negócio abaixo (que tolera linhas incompletas
+// do editor sem rejeitar a proposta inteira).
+const proposalSchema = z.object({
+  jobId: uuid,
+  value: z.unknown().optional(),
+  deadlineHours: z.unknown().optional(),
+  message: z.string().max(2000).nullish(),
+  proposedMilestones: z.array(z.unknown()).optional(),
+})
 
 // POST /api/proposals
 // body: { jobId, value, deadlineHours?, message? }
@@ -25,11 +38,9 @@ export async function POST(req: Request) {
       { status: 403 }
     )
 
-  let body: any = {}
-  try { body = await req.json() } catch {}
-  const { jobId, value, deadlineHours, message, proposedMilestones } = body
-
-  if (!jobId)  return NextResponse.json({ error: 'jobId obrigatório.' }, { status: 400 })
+  const { data: input, error: badInput } = await parseBody(req, proposalSchema)
+  if (badInput) return badInput
+  const { jobId, value, deadlineHours, message, proposedMilestones } = input
 
   const trimmedMsg = typeof message === 'string' ? message.trim().slice(0, 2000) : null
 

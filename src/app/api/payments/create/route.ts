@@ -3,6 +3,10 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { getPaymentGateway } from '@/lib/payments'
 import { calcCompanyTotal } from '@/lib/fees'
 import { NextResponse } from 'next/server'
+import { parseBody, uuid } from '@/lib/validation'
+import { z } from 'zod'
+
+const createPaymentSchema = z.object({ jobId: uuid })
 
 export async function POST(req: Request) {
   const supabase = await createClient()
@@ -11,8 +15,9 @@ export async function POST(req: Request) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 })
 
-  const { jobId } = await req.json()
-  if (!jobId) return NextResponse.json({ error: 'jobId obrigatório.' }, { status: 400 })
+  const { data: input, error: badInput } = await parseBody(req, createPaymentSchema)
+  if (badInput) return badInput
+  const { jobId } = input
 
   const { data: profile } = await supabase
     .from('profiles').select('id, role, name').eq('user_id', user.id).single()

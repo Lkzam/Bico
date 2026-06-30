@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { ensureProfile } from '@/lib/ensureProfile'
 import { NextResponse } from 'next/server'
 
 // Verifica o link de email do Supabase via token_hash (fluxo recomendado p/ SSR).
@@ -19,9 +20,21 @@ export async function GET(req: Request) {
 
   if (token_hash && type) {
     const supabase = await createClient()
-    const { error } = await supabase.auth.verifyOtp({ type, token_hash })
+    const { data, error } = await supabase.auth.verifyOtp({ type, token_hash })
     if (!error) {
-      // Sessão (de recuperação) gravada nos cookies → segue p/ definir nova senha
+      // Confirmação de cadastro: cria o perfil a partir do user_metadata gravado
+      // no signUp (role/name/bio), já que sem sessão prévia o complete-profile
+      // não roda. Idempotente — se já existir, não faz nada.
+      if ((type === 'signup' || type === 'email') && data.user) {
+        const m = data.user.user_metadata ?? {}
+        await ensureProfile({
+          userId: data.user.id,
+          role: m.role,
+          name: m.name,
+          bio: m.bio,
+        })
+      }
+      // Sessão gravada nos cookies → segue para o destino
       return NextResponse.redirect(new URL(safeNext, url.origin))
     }
   }

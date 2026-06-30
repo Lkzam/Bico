@@ -4,6 +4,13 @@ import { NextResponse } from 'next/server'
 import { getPaymentGateway } from '@/lib/payments'
 import { isValidPixKey } from '@/lib/security'
 import { notifyAdminAlert } from '@/lib/email'
+import { parseBody, moneyAmountCoerced } from '@/lib/validation'
+import { z } from 'zod'
+
+const withdrawSchema = z.object({
+  amount: moneyAmountCoerced,
+  pixKey: z.string().trim().min(1, 'Chave PIX obrigatória.').max(140),
+})
 
 export async function POST(req: Request) {
   const supabase = await createClient()
@@ -22,14 +29,11 @@ export async function POST(req: Request) {
   const { data: priv } = await admin
     .from('account_private').select('balance, pix_key').eq('profile_id', profile.id).single()
 
-  const body = await req.json()
-  const { amount, pixKey } = body
+  const { data: input, error: badInput } = await parseBody(req, withdrawSchema)
+  if (badInput) return badInput
 
-  const parsedAmount = parseFloat(amount)
-  if (!parsedAmount || isNaN(parsedAmount) || parsedAmount <= 0)
-    return NextResponse.json({ error: 'Valor inválido.' }, { status: 400 })
-  if (!pixKey?.trim())
-    return NextResponse.json({ error: 'Chave PIX obrigatória.' }, { status: 400 })
+  const parsedAmount = input.amount
+  const pixKey = input.pixKey
   if (!isValidPixKey(pixKey))
     return NextResponse.json({ error: 'Chave PIX inválida. Informe CPF, CNPJ, telefone, e-mail ou chave aleatória.' }, { status: 400 })
 

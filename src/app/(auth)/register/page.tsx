@@ -13,6 +13,7 @@ export default function RegisterPage() {
   const router = useRouter()
   const supabase = createClient()
   const [loading, setLoading] = useState(false)
+  const [sent, setSent] = useState(false)
   const [role, setRole] = useState<UserRole>('freelancer')
   const [form, setForm] = useState({ email: '', password: '', name: '', bio: '' })
   const [acceptedTerms, setAcceptedTerms] = useState(false)
@@ -25,10 +26,12 @@ export default function RegisterPage() {
     }
     setLoading(true)
 
+    // role/name/bio vão no metadata: se a confirmação de email estiver ligada,
+    // o perfil é criado depois, no /auth/confirm, a partir desses dados.
     const { data, error } = await supabase.auth.signUp({
       email: form.email,
       password: form.password,
-      options: { data: { role, name: form.name } },
+      options: { data: { role, name: form.name, bio: form.bio } },
     })
 
     if (error) {
@@ -43,7 +46,15 @@ export default function RegisterPage() {
       return
     }
 
-    // Usa API route com admin client para garantir criação do perfil
+    // Sem sessão = confirmação de email ligada no Supabase → mostra "confira seu
+    // email" e encerra. O perfil será criado quando o usuário confirmar o link.
+    if (!data.session) {
+      setSent(true)
+      setLoading(false)
+      return
+    }
+
+    // Confirmação desligada: já tem sessão, cria o perfil agora.
     const res = await fetch('/api/auth/complete-profile', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -91,6 +102,27 @@ export default function RegisterPage() {
           </Link>
         </div>
 
+        {sent ? (
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+              <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#22c55e', boxShadow: '0 0 6px rgba(34,197,94,0.9)' }} />
+              <span style={{ fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: '#22c55e' }}>
+                Quase lá
+              </span>
+            </div>
+            <h1 style={{ fontFamily: 'var(--font-body), Inter, sans-serif', fontSize: 'clamp(1.8rem, 4vw, 2.5rem)', fontWeight: 900, lineHeight: 1.05, letterSpacing: '-0.03em', color: '#fff', margin: '0 0 12px' }}>
+              Confira seu email
+            </h1>
+            <p style={{ fontSize: 14, color: 'rgba(185,190,200,0.6)', margin: '0 0 32px', lineHeight: 1.6 }}>
+              Enviamos um link de confirmação para <strong style={{ color: '#fff' }}>{form.email}</strong>.
+              Clique nele para ativar sua conta e começar a usar o Bico. Confira também a caixa de spam.
+            </p>
+            <Link href="/login" style={{ display: 'inline-block', fontSize: 13, fontWeight: 700, color: '#d4783a', textDecoration: 'none' }}>
+              ← Voltar para o login
+            </Link>
+          </div>
+        ) : (
+        <>
         {/* Eyebrow */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
           <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#d94e18', boxShadow: '0 0 6px rgba(217,78,24,0.9)' }} />
@@ -271,6 +303,8 @@ export default function RegisterPage() {
             Entrar
           </Link>
         </div>
+        </>
+        )}
 
       </div>
     </div>
