@@ -176,6 +176,11 @@ export default function LoginPage() {
             <Link href="/register" style={{ fontSize: 13, fontWeight: 700, color: '#d4783a', textDecoration: 'none' }}>
               Cadastre-se grátis
             </Link>
+            <div style={{ marginTop: 14 }}>
+              <Link href="/esqueci-senha" style={{ fontSize: 13, fontWeight: 600, color: 'rgba(185,190,200,0.5)', textDecoration: 'none' }}>
+                Esqueci minha senha
+              </Link>
+            </div>
             <div style={{ marginTop: 20, display: 'flex', justifyContent: 'center', gap: 20 }}>
               <Link href="/termos" style={{ fontSize: 11, color: 'rgba(185,190,200,0.3)', textDecoration: 'none' }}>Termos de Serviço</Link>
               <Link href="/privacidade" style={{ fontSize: 11, color: 'rgba(185,190,200,0.3)', textDecoration: 'none' }}>Política de Privacidade</Link>
