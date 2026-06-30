@@ -114,6 +114,17 @@ export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl
   const ip = getIP(req)
 
+  // ── 0. Rede de segurança: link de recuperação (PKCE) caindo na raiz ───────
+  // Se o template de email usar {{ .ConfirmationURL }}, o Supabase redireciona
+  // o code para a Site URL (raiz) como /?code=... Aqui encaminhamos para o
+  // /auth/callback, que troca o code por sessão e leva ao /redefinir-senha.
+  if (pathname === '/' && req.nextUrl.searchParams.has('code')) {
+    const dest = new URL('/auth/callback', req.url)
+    dest.searchParams.set('code', req.nextUrl.searchParams.get('code')!)
+    dest.searchParams.set('next', '/redefinir-senha')
+    return NextResponse.redirect(dest)
+  }
+
   // ── 1. Rate limiting (apenas rotas /api/) ────────────────────────────────
   if (pathname.startsWith('/api/')) {
     const isInternal = INTERNAL_PATTERNS.some(p => pathname.startsWith(p))
