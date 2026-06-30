@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { notifyAdminNewDispute } from '@/lib/email'
+import { buildDisputeBundle } from '@/lib/disputeBundle'
 import { NextResponse } from 'next/server'
 
 // POST /api/contracts/milestones/[id]/dispute
@@ -59,16 +60,28 @@ export async function POST(
   }
 
   // Notifica admin por email (best-effort) e o freelancer (in-app).
+  // Anexa ZIP com log do chat + arquivos, e inclui nome + ID das partes.
   const company    = job.company    as { name?: string } | null
   const freelancer = job.freelancer as { name?: string } | null
   try {
+    let bundle = null
+    try {
+      const b = await buildDisputeBundle(job.id)
+      if (b.zip) bundle = { zip: b.zip, messageCount: b.messageCount, fileCount: b.fileCount }
+    } catch (bundleErr) {
+      console.error('[milestones/dispute] Falha ao montar ZIP do chat:', bundleErr)
+    }
+
     await notifyAdminNewDispute({
       jobId:          job.id,
       jobTitle:       `${job.title} — etapa: ${ms.title}`,
       jobValue:       Number(ms.value),
       companyName:    company?.name ?? 'Empresa',
+      companyId:      job.company_id,
       freelancerName: freelancer?.name ?? 'Freelancer',
+      freelancerId:   job.freelancer_id ?? '—',
       reason:         reason || null,
+      bundle,
     })
   } catch (err) {
     console.error('[milestones/dispute] Falha ao notificar admin:', err)

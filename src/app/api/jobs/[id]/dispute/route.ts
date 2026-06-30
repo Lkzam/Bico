@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { notifyAdminNewDispute } from '@/lib/email'
+import { buildDisputeBundle } from '@/lib/disputeBundle'
 import { NextResponse } from 'next/server'
 
 export async function POST(
@@ -53,17 +54,30 @@ export async function POST(
     }).eq('id', jobId),
   ])
 
-  // Notifica admin por email (best-effort; falha não bloqueia a disputa)
+  // Notifica admin por email (best-effort; falha não bloqueia a disputa).
+  // Anexa um ZIP com o log do chat + arquivos trocados, e inclui nome + ID
+  // de empresa e freelancer.
   const company    = job.company    as { name?: string } | null
   const freelancer = job.freelancer as { name?: string } | null
   try {
+    let bundle = null
+    try {
+      const b = await buildDisputeBundle(job.id)
+      if (b.zip) bundle = { zip: b.zip, messageCount: b.messageCount, fileCount: b.fileCount }
+    } catch (bundleErr) {
+      console.error('[dispute] Falha ao montar ZIP do chat:', bundleErr)
+    }
+
     await notifyAdminNewDispute({
       jobId:          job.id,
       jobTitle:       job.title,
       jobValue:       Number(job.value),
       companyName:    company?.name ?? 'Empresa',
+      companyId:      job.company_id,
       freelancerName: freelancer?.name ?? 'Freelancer',
+      freelancerId:   job.freelancer_id ?? '—',
       reason:         reason || null,
+      bundle,
     })
   } catch (err) {
     console.error('[dispute] Falha ao notificar admin por email:', err)

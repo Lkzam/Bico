@@ -24,11 +24,17 @@ function getClient(): Resend | null {
   return cachedClient
 }
 
+export interface EmailAttachment {
+  filename: string
+  content: Buffer | string   // Buffer (binário) ou base64
+}
+
 export interface SendEmailParams {
   to: string | string[]
   subject: string
   html: string
   text?: string
+  attachments?: EmailAttachment[]
 }
 
 export async function sendEmail(params: SendEmailParams): Promise<{ ok: boolean; error?: string }> {
@@ -47,6 +53,7 @@ export async function sendEmail(params: SendEmailParams): Promise<{ ok: boolean;
       subject: params.subject,
       html: params.html,
       text: params.text,
+      attachments: params.attachments,
     })
     if (error) {
       console.error('[email] Resend retornou erro:', error)
@@ -65,8 +72,12 @@ export async function notifyAdminNewDispute(params: {
   jobTitle: string
   jobValue: number
   companyName: string
+  companyId: string
   freelancerName: string
+  freelancerId: string
   reason: string | null
+  /** ZIP (log do chat + arquivos) anexado ao email. */
+  bundle?: { zip: Buffer; messageCount: number; fileCount: number } | null
 }): Promise<void> {
   const adminEmail = process.env.ADMIN_EMAIL
   if (!adminEmail) {
@@ -78,6 +89,17 @@ export async function notifyAdminNewDispute(params: {
   const link   = `${appUrl}/dashboard/admin/disputes`
   const valor  = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(params.jobValue)
 
+  // Linha de "partes envolvidas" com nome + ID, para o admin identificar rápido.
+  const partyRow = (label: string, name: string, id: string) => `
+    <tr>
+      <td style="padding:6px 10px;font-size:11px;color:#94a3b8;text-transform:uppercase;letter-spacing:.1em;white-space:nowrap;vertical-align:top;">${label}</td>
+      <td style="padding:6px 10px;font-size:13px;color:#fff;">${escapeHtml(name)}<br><span style="font-size:11px;color:#64748b;font-family:monospace;">${escapeHtml(id)}</span></td>
+    </tr>`
+
+  const bundleNote = params.bundle
+    ? `<p style="margin:16px 0 0;font-size:12px;color:#22c55e;">📎 Anexo: <strong>disputa-${escapeHtml(params.jobId)}.zip</strong> — ${params.bundle.messageCount} mensagem(ns) e ${params.bundle.fileCount} arquivo(s) do chat.</p>`
+    : ''
+
   const html = `
 <!doctype html>
 <html lang="pt-BR">
@@ -88,11 +110,13 @@ export async function notifyAdminNewDispute(params: {
       Bico · Admin
     </div>
     <h1 style="font-size:20px;margin:0 0 16px;color:#fff;">Nova disputa aberta</h1>
-    <p style="margin:0 0 14px;color:#cbd5e1;line-height:1.5;">
-      A empresa <strong>${escapeHtml(params.companyName)}</strong> contestou a entrega do trabalho
-      <strong>${escapeHtml(params.jobTitle)}</strong> (${valor}) feita por
-      <strong>${escapeHtml(params.freelancerName)}</strong>.
+    <p style="margin:0 0 16px;color:#cbd5e1;line-height:1.5;">
+      Contestação da entrega de <strong>${escapeHtml(params.jobTitle)}</strong> (${valor}).
     </p>
+    <table style="width:100%;border-collapse:collapse;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);margin-bottom:18px;">
+      ${partyRow('Empresa', params.companyName, params.companyId)}
+      ${partyRow('Freelancer', params.freelancerName, params.freelancerId)}
+    </table>
     ${params.reason
       ? `<div style="padding:14px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);margin-bottom:18px;">
            <div style="font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#94a3b8;margin-bottom:6px;">Motivo</div>
@@ -103,8 +127,9 @@ export async function notifyAdminNewDispute(params: {
     <a href="${link}" style="display:inline-block;padding:12px 22px;background:#d94e18;color:#fff;text-decoration:none;font-weight:700;font-size:12px;letter-spacing:.12em;text-transform:uppercase;">
       Abrir painel de arbitragem
     </a>
+    ${bundleNote}
     <p style="margin:20px 0 0;font-size:11px;color:#64748b;">
-      Job ID: ${params.jobId}
+      Job ID: ${escapeHtml(params.jobId)}
     </p>
   </div>
 </body>
@@ -112,18 +137,23 @@ export async function notifyAdminNewDispute(params: {
 
   const text = `Nova disputa aberta no Bico
 
-Empresa: ${params.companyName}
-Freelancer: ${params.freelancerName}
 Trabalho: ${params.jobTitle} (${valor})
-${params.reason ? `Motivo: ${params.reason}\n` : ''}
+
+Empresa: ${params.companyName} [ID: ${params.companyId}]
+Freelancer: ${params.freelancerName} [ID: ${params.freelancerId}]
+${params.reason ? `\nMotivo: ${params.reason}\n` : ''}
 Abra o painel: ${link}
-Job ID: ${params.jobId}`
+Job ID: ${params.jobId}
+${params.bundle ? `\nAnexo: disputa-${params.jobId}.zip (${params.bundle.messageCount} mensagens, ${params.bundle.fileCount} arquivos)` : ''}`
 
   await sendEmail({
     to: adminEmail,
     subject: `[Bico] Disputa aberta — ${params.jobTitle}`,
     html,
     text,
+    attachments: params.bundle
+      ? [{ filename: `disputa-${params.jobId}.zip`, content: params.bundle.zip }]
+      : undefined,
   })
 }
 
