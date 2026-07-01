@@ -20,15 +20,6 @@ A cada execução agendada, o agente:
 ## 🟢 A Fazer
 <!-- Adicione tarefas aqui, uma por bloco. Formato: -->
 
-### [ ] Forçar `rating` a ser inteiro de 1 a 5 em avaliações
-**Objetivo:** A rota de avaliações aceita valores inválidos de `rating` (ex: a string `"abc"` ou o decimal `3.7` passam pela checagem atual `rating < 1 || rating > 5`). Validar com zod para rejeitar qualquer coisa que não seja inteiro de 1 a 5.
-**Critério de pronto:**
-- `src/app/api/reviews/submit/route.ts` usa o helper `parseBody` (de `src/lib/validation.ts`) com um schema zod: `jobArchiveId` = uuid, `rating` = inteiro entre 1 e 5, `comment` = string opcional (máx 2000).
-- Um teste novo em `src/lib/__tests__/` (ou próximo) prova que o schema rejeita `"abc"` e `3.7` e aceita `1` e `5`.
-- `npm test` e `npm run lint` passam.
-**Contexto/arquivos:** `src/app/api/reviews/submit/route.ts`, `src/lib/validation.ts` (já tem `parseBody` e `uuid`). Seguir o mesmo padrão já usado em `src/app/api/withdraw/route.ts`.
-**Prioridade:** alta
-
 ### [ ] Aplicar validação zod em cancel e edit de jobs
 **Objetivo:** Padronizar a validação de entrada nas rotas de cancelar e editar job, hoje feita manualmente, usando o helper `parseBody` + zod (igual às rotas de dinheiro).
 **Critério de pronto:**
@@ -59,6 +50,15 @@ A cada execução agendada, o agente:
 
 ## 🟡 Em andamento
 <!-- O agente escreve aqui o que está no meio quando o limite/tempo acaba. -->
+
+### [~] Forçar `rating` a ser inteiro de 1 a 5 em avaliações (2026-07-01)
+Código, testes e lint concluídos e commitados na branch `agent/rating-int-validation`
+(push feito para `origin`). **Falta só abrir o PR**: o `gh` CLI não está instalado
+neste ambiente de execução agendada e não há `GITHUB_TOKEN`/`GH_TOKEN` disponível,
+então não foi possível chamar a API do GitHub para criar o Pull Request.
+Ação humana necessária: abrir o PR manualmente em
+https://github.com/Lkzam/Bico/pull/new/agent/rating-int-validation (branch já
+pronta, só falta o clique) — ou instalar/configurar `gh` no runner do agente.
 
 ---
 
