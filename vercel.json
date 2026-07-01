@@ -1,7 +1,7 @@
 {
   "framework": "nextjs",
   "crons": [
-    { "path": "/api/jobs/auto-approve", "schedule": "0 * * * *" },
+    { "path": "/api/jobs/auto-approve", "schedule": "0 4 * * *" },
     { "path": "/api/contracts/auto-approve", "schedule": "0 3 * * *" }
   ]
 }
