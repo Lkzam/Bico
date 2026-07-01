@@ -20,11 +20,40 @@ A cada execução agendada, o agente:
 ## 🟢 A Fazer
 <!-- Adicione tarefas aqui, uma por bloco. Formato: -->
 
-### [ ] Exemplo — trocar este bloco pela sua primeira tarefa real
-**Objetivo:** descreva o que você quer pronto.
-**Critério de pronto:** como saber que terminou (ex: "tela X abre e salva no Supabase").
-**Contexto/arquivos:** dicas de onde mexer, se souber.
-**Prioridade:** alta / média / baixa
+### [ ] Forçar `rating` a ser inteiro de 1 a 5 em avaliações
+**Objetivo:** A rota de avaliações aceita valores inválidos de `rating` (ex: a string `"abc"` ou o decimal `3.7` passam pela checagem atual `rating < 1 || rating > 5`). Validar com zod para rejeitar qualquer coisa que não seja inteiro de 1 a 5.
+**Critério de pronto:**
+- `src/app/api/reviews/submit/route.ts` usa o helper `parseBody` (de `src/lib/validation.ts`) com um schema zod: `jobArchiveId` = uuid, `rating` = inteiro entre 1 e 5, `comment` = string opcional (máx 2000).
+- Um teste novo em `src/lib/__tests__/` (ou próximo) prova que o schema rejeita `"abc"` e `3.7` e aceita `1` e `5`.
+- `npm test` e `npm run lint` passam.
+**Contexto/arquivos:** `src/app/api/reviews/submit/route.ts`, `src/lib/validation.ts` (já tem `parseBody` e `uuid`). Seguir o mesmo padrão já usado em `src/app/api/withdraw/route.ts`.
+**Prioridade:** alta
+
+### [ ] Aplicar validação zod em cancel e edit de jobs
+**Objetivo:** Padronizar a validação de entrada nas rotas de cancelar e editar job, hoje feita manualmente, usando o helper `parseBody` + zod (igual às rotas de dinheiro).
+**Critério de pronto:**
+- `src/app/api/jobs/[id]/cancel/route.ts`: valida `{ reason: string (máx 2000, opcional) }` com zod.
+- `src/app/api/jobs/[id]/edit/route.ts`: valida os campos editáveis (`title`, `description`, `deadline_hours`, `work_type`, `address`) com zod — SEM permitir alterar `value` (regra de negócio: valor é imutável).
+- Nenhum comportamento existente muda para entradas válidas.
+- `npm test` e `npm run lint` passam.
+**Contexto/arquivos:** `src/lib/validation.ts` (helper `parseBody`), `src/app/api/withdraw/route.ts` (exemplo de uso). NÃO adicionar `value` ao schema de edit.
+**Prioridade:** média
+
+### [ ] Cobrir o helper de validação com testes
+**Objetivo:** Adicionar testes unitários para `src/lib/validation.ts`, garantindo que os schemas reutilizáveis funcionam.
+**Critério de pronto:**
+- Teste novo cobre `moneyAmountCoerced` (aceita `100`, `"100.50"`; rejeita `0`, negativos, mais de 2 casas, acima de 1.000.000) e `uuid` (aceita um uuid válido; rejeita `"123"`).
+- `npm test` passa com os testes novos verdes.
+**Contexto/arquivos:** `src/lib/validation.ts`, seguir o estilo de `src/lib/__tests__/fees.test.ts`.
+**Prioridade:** média
+
+### [ ] Remover seção obsoleta "Migração Pendente" do CLAUDE.md
+**Objetivo:** O `CLAUDE.md` tem uma seção "## Migração Pendente ⚠️" que já foi aplicada no banco (registrada como aplicada em `supabase/MIGRATIONS.md`). Remover para não confundir.
+**Critério de pronto:**
+- A seção "## Migração Pendente ⚠️" é removida de `freela-app/CLAUDE.md`.
+- Nada mais é alterado no arquivo.
+**Contexto/arquivos:** `freela-app/CLAUDE.md`, conferir `supabase/MIGRATIONS.md` para confirmar que já está aplicada.
+**Prioridade:** baixa
 
 ---
 
