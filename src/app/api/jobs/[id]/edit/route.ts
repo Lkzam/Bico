@@ -1,6 +1,20 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { NextResponse } from 'next/server'
+import { parseBody, deadlineHours } from '@/lib/validation'
+import { z } from 'zod'
+
+// NOTA: `value` é imutável por regra de negócio — não entra no schema de edição.
+const editSchema = z.object({
+  title:          z.string().trim().min(1, 'Título é obrigatório.').max(200, 'Título muito longo.'),
+  description:    z.string().trim().min(1, 'Descrição é obrigatória.').max(20000, 'Descrição muito longa.'),
+  deadline_hours: deadlineHours,
+  work_type:      z.enum(['remote', 'presential']).optional().default('remote'),
+  address:        z.string().trim().max(500, 'Endereço muito longo.').optional(),
+}).refine(
+  d => d.work_type !== 'presential' || !!d.address,
+  { message: 'Endereço é obrigatório para trabalho presencial.', path: ['address'] },
+)
 
 export async function PATCH(
   req: Request,
@@ -31,20 +45,16 @@ export async function PATCH(
   if (!['open', 'in_progress'].includes(job.status))
     return NextResponse.json({ error: 'Não é possível editar um trabalho já entregue ou concluído.' }, { status: 400 })
 
-  const body = await req.json()
-  const { title, description, deadline_hours, address, work_type } = body
-
-  if (!title?.trim()) return NextResponse.json({ error: 'Título é obrigatório.' }, { status: 400 })
-  if (!description?.trim()) return NextResponse.json({ error: 'Descrição é obrigatória.' }, { status: 400 })
-  if (work_type === 'presential' && !address?.trim())
-    return NextResponse.json({ error: 'Endereço é obrigatório para trabalho presencial.' }, { status: 400 })
+  const { data: input, error: badInput } = await parseBody(req, editSchema)
+  if (badInput) return badInput
+  const { title, description, deadline_hours, work_type, address } = input
 
   const { error } = await admin.from('jobs').update({
-    title:          title.trim(),
-    description:    description.trim(),
-    deadline_hours: deadline_hours ? parseInt(deadline_hours) : null,
-    work_type:      work_type ?? 'remote',
-    address:        work_type === 'presential' ? address.trim() : null,
+    title,
+    description,
+    deadline_hours,
+    work_type,
+    address:        work_type === 'presential' ? address! : null,
   }).eq('id', jobId)
 
   if (error) return NextResponse.json({ error: 'Erro ao salvar alterações.' }, { status: 500 })

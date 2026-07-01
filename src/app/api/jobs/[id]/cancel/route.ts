@@ -1,6 +1,12 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { NextResponse } from 'next/server'
+import { parseBody } from '@/lib/validation'
+import { z } from 'zod'
+
+const cancelSchema = z.object({
+  reason: z.string().trim().max(2000, 'Motivo muito longo (máx. 2000 caracteres).').optional(),
+})
 
 export async function POST(
   req: Request,
@@ -18,12 +24,10 @@ export async function POST(
   if (!profile || !['company', 'freelancer'].includes(profile.role))
     return NextResponse.json({ error: 'Perfil não encontrado.' }, { status: 403 })
 
-  // Lê o motivo do cancelamento
-  let cancelReason = ''
-  try {
-    const body = await req.json()
-    cancelReason = (body.reason ?? '').trim()
-  } catch { /* body vazio, sem motivo */ }
+  // Lê e valida o motivo do cancelamento (opcional)
+  const { data: input, error: badInput } = await parseBody(req, cancelSchema)
+  if (badInput) return badInput
+  const cancelReason = input.reason ?? ''
 
   // Busca o job
   const { data: job } = await admin
