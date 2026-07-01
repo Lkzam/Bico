@@ -1,6 +1,18 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { NextResponse } from 'next/server'
+import { z } from 'zod'
+import { parseBody, uuid } from '@/lib/validation'
+
+export const reviewSubmitSchema = z.object({
+  jobArchiveId: uuid,
+  rating: z
+    .number({ invalid_type_error: 'Rating deve ser um inteiro de 1 a 5.' })
+    .int('Rating deve ser um inteiro de 1 a 5.')
+    .min(1, 'Rating deve ser entre 1 e 5.')
+    .max(5, 'Rating deve ser entre 1 e 5.'),
+  comment: z.string().max(2000, 'Comentário deve ter no máximo 2000 caracteres.').optional(),
+})
 
 export async function POST(req: Request) {
   const supabase = await createClient()
@@ -13,15 +25,10 @@ export async function POST(req: Request) {
     .from('profiles').select('id, role').eq('user_id', user.id).single()
   if (!profile) return NextResponse.json({ error: 'Perfil não encontrado.' }, { status: 404 })
 
-  const body = await req.json()
-  const { jobArchiveId, rating, comment } = body
+  const { data: input, error: badInput } = await parseBody(req, reviewSubmitSchema)
+  if (badInput) return badInput
 
-  if (!jobArchiveId || !rating) {
-    return NextResponse.json({ error: 'jobArchiveId e rating são obrigatórios.' }, { status: 400 })
-  }
-  if (rating < 1 || rating > 5) {
-    return NextResponse.json({ error: 'Rating deve ser entre 1 e 5.' }, { status: 400 })
-  }
+  const { jobArchiveId, rating, comment } = input
 
   // Busca o arquivo do job
   const { data: archive } = await admin
