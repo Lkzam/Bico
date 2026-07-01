@@ -51,15 +51,6 @@ A cada execução agendada, o agente:
 ## 🟡 Em andamento
 <!-- O agente escreve aqui o que está no meio quando o limite/tempo acaba. -->
 
-### [~] Forçar `rating` a ser inteiro de 1 a 5 em avaliações (2026-07-01)
-Código, testes e lint concluídos e commitados na branch `agent/rating-int-validation`
-(push feito para `origin`). **Falta só abrir o PR**: o `gh` CLI não está instalado
-neste ambiente de execução agendada e não há `GITHUB_TOKEN`/`GH_TOKEN` disponível,
-então não foi possível chamar a API do GitHub para criar o Pull Request.
-Ação humana necessária: abrir o PR manualmente em
-https://github.com/Lkzam/Bico/pull/new/agent/rating-int-validation (branch já
-pronta, só falta o clique) — ou instalar/configurar `gh` no runner do agente.
-
 ---
 
 ## 🔴 Precisa de decisão (bloqueadas)
@@ -69,3 +60,7 @@ pronta, só falta o clique) — ou instalar/configurar `gh` no runner do agente.
 
 ## ✅ Concluído
 <!-- O agente move as tarefas prontas pra cá, com data e link do PR/commit. -->
+
+### [x] Forçar `rating` a ser inteiro de 1 a 5 em avaliações (2026-07-01)
+Validação de rating como inteiro 1–5 (código + testes + lint).
+Branch `agent/rating-int-validation` → PR: https://github.com/Lkzam/Bico/pull/1
