@@ -20,11 +20,21 @@ A cada execução agendada, o agente:
 ## 🟢 A Fazer
 <!-- Adicione tarefas aqui, uma por bloco. Formato: -->
 
-### [ ] Exemplo — trocar este bloco pela sua primeira tarefa real
-**Objetivo:** descreva o que você quer pronto.
-**Critério de pronto:** como saber que terminou (ex: "tela X abre e salva no Supabase").
-**Contexto/arquivos:** dicas de onde mexer, se souber.
-**Prioridade:** alta / média / baixa
+### [ ] Cobrir o helper de validação com testes
+**Objetivo:** Adicionar testes unitários para `src/lib/validation.ts`, garantindo que os schemas reutilizáveis funcionam.
+**Critério de pronto:**
+- Teste novo cobre `moneyAmountCoerced` (aceita `100`, `"100.50"`; rejeita `0`, negativos, mais de 2 casas, acima de 1.000.000) e `uuid` (aceita um uuid válido; rejeita `"123"`).
+- `npm test` passa com os testes novos verdes.
+**Contexto/arquivos:** `src/lib/validation.ts`, seguir o estilo de `src/lib/__tests__/fees.test.ts`.
+**Prioridade:** média
+
+### [ ] Remover seção obsoleta "Migração Pendente" do CLAUDE.md
+**Objetivo:** O `CLAUDE.md` tem uma seção "## Migração Pendente ⚠️" que já foi aplicada no banco (registrada como aplicada em `supabase/MIGRATIONS.md`). Remover para não confundir.
+**Critério de pronto:**
+- A seção "## Migração Pendente ⚠️" é removida de `freela-app/CLAUDE.md`.
+- Nada mais é alterado no arquivo.
+**Contexto/arquivos:** `freela-app/CLAUDE.md`, conferir `supabase/MIGRATIONS.md` para confirmar que já está aplicada.
+**Prioridade:** baixa
 
 ---
 
@@ -40,3 +50,14 @@ A cada execução agendada, o agente:
 
 ## ✅ Concluído
 <!-- O agente move as tarefas prontas pra cá, com data e link do PR/commit. -->
+
+### [x] Aplicar validação zod em cancel e edit de jobs — 2026-07-01
+Rotas `cancel` e `edit` de jobs agora validam entrada com `parseBody` + zod
+(reason opcional máx 2000; title/description/deadline_hours/work_type/address;
+`value` continua imutável). `npm test` passa (40 testes); sem novos erros de lint.
+PR: https://github.com/Lkzam/Bico/pull/2
+
+### [x] Forçar `rating` a ser inteiro de 1 a 5 em avaliações — 2026-07-01
+Concluída em rodada anterior (branch `agent/rating-int-validation`). Já tem PR
+aberto aguardando revisão do dono. Registrada aqui para evitar retrabalho/duplicação.
+PR: https://github.com/Lkzam/Bico/pull/1
